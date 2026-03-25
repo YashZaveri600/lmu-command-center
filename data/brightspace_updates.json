@@ -1,0 +1,209 @@
+[
+  {
+    "id": "bs-001",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "urgent",
+    "title": "Team Project Progress Report Due",
+    "date": "2026-03-25",
+    "detail": "Download PPT template from Brightspace Week 10. Submit 1 per team by beginning of class on Wednesday."
+  },
+  {
+    "id": "bs-002",
+    "course": "accounting",
+    "type": "assignment",
+    "urgency": "urgent",
+    "title": "Midterm Exam 2 (Chapters 5, 6, 8)",
+    "date": "2026-03-26",
+    "detail": "In-person during lecture (3:40-5:20 PM). Covers Chapters 5, 6, 8. Worth 250 points (25% of total grade)."
+  },
+  {
+    "id": "bs-003",
+    "course": "marketing",
+    "type": "assignment",
+    "urgency": "urgent",
+    "title": "Part 3: Brand Development Presentation (Practice)",
+    "date": "2026-03-26",
+    "detail": "In-class practice presentation on Thursday. Pass/fail grade with feedback."
+  },
+  {
+    "id": "bs-004",
+    "course": "philosophy",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "Republic Position Paper Due",
+    "date": "2026-03-30",
+    "detail": "Pick ONE aspect of Plato's Republic to describe and critique. 5+ pages, double-spaced. First third descriptive, remainder argumentative. Must interact with opposing viewpoint. No bibliography required — use textual citations from the Republic. Late papers will NOT be accepted. Worth 20% of final grade."
+  },
+  {
+    "id": "bs-005",
+    "course": "marketing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "Individual Oral Practice (Pitch Vantage)",
+    "date": "2026-04-07",
+    "detail": "Submit individual 2-3 minute pitch. Worth 5% of total grade."
+  },
+  {
+    "id": "bs-006",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "12 Angry Men Movie Questions Due",
+    "date": "2026-04-08",
+    "detail": "Watch '12 Angry Men' during Week 11 (holiday week). Submit answers via email by beginning of class for participation credit."
+  },
+  {
+    "id": "bs-007",
+    "course": "accounting",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "HW7 — Chapter 10 (Connect)",
+    "date": "2026-04-09",
+    "detail": "Complete on McGraw-Hill Connect by 11:59 PM PST."
+  },
+  {
+    "id": "bs-008",
+    "course": "marketing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "Full/Final App Project Presentations",
+    "date": "2026-04-09",
+    "detail": "10-minute combined final presentation in class. Must include app screenshots and video content. Email slides to professor AND upload to Brightspace."
+  },
+  {
+    "id": "bs-009",
+    "course": "accounting",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "HW8 & HW9 — Chapters 11 & 12 (Connect)",
+    "date": "2026-04-21",
+    "detail": "Complete on McGraw-Hill Connect by 11:59 PM PST."
+  },
+  {
+    "id": "bs-010",
+    "course": "accounting",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "HW10 — Chapter 13 (Connect)",
+    "date": "2026-04-23",
+    "detail": "Complete on McGraw-Hill Connect by 11:59 PM PST."
+  },
+  {
+    "id": "bs-011",
+    "course": "marketing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "Kohl's Business Data Exercise",
+    "date": "2026-04-24",
+    "detail": "Written exercise due in class."
+  },
+  {
+    "id": "bs-012",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "Team Presentations (3 teams)",
+    "date": "2026-04-27",
+    "detail": "20-25 minute in-class presentations on Monday. Remaining 3 teams present Wednesday April 29."
+  },
+  {
+    "id": "bs-013",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "CBA Showcase Poster Event",
+    "date": "2026-04-28",
+    "detail": "Setup 5:30-5:45 PM, event 5:45-6:00 PM. At least 1 team member should attend. CBA Advantage Points for presenting."
+  },
+  {
+    "id": "bs-014",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "Follow-up Email to Client Organization",
+    "date": "2026-04-29",
+    "detail": "Thank-you email with brief summary of findings. CC Professor Schlaerth. Required to receive a grade. Due by midnight."
+  },
+  {
+    "id": "bs-015",
+    "course": "accounting",
+    "type": "assignment",
+    "urgency": "upcoming",
+    "title": "HW11 — Chapter 14 (Connect)",
+    "date": "2026-04-30",
+    "detail": "Complete on McGraw-Hill Connect by 11:59 PM PST."
+  },
+  {
+    "id": "bs-016",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "info",
+    "title": "Peerceptiv Peer Evaluation",
+    "date": "2026-05-03",
+    "detail": "No submission = ZERO points (0/20). Due by 11:59 PM."
+  },
+  {
+    "id": "bs-017",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "info",
+    "title": "Exam 2 — In-Person Case Study Analysis",
+    "date": "2026-05-04",
+    "detail": "In-person during class. Business case study analysis using Green Exam Book. NOT open book/open notes. 6 sections, 10 pts each = 60 pts. Will NOT be rescheduled."
+  },
+  {
+    "id": "bs-018",
+    "course": "accounting",
+    "type": "assignment",
+    "urgency": "info",
+    "title": "Final Exam (Chapters 10-14)",
+    "date": "2026-05-07",
+    "detail": "In-person. Worth 250 points (25%). Check your section for exact time slot."
+  },
+  {
+    "id": "bs-019",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "info",
+    "title": "Connect E-book Homework — All Modules Due",
+    "date": "2026-05-10",
+    "detail": "Final deadline for all Connect textbook modules. No extensions. Due by 11:59 PM."
+  },
+  {
+    "id": "bs-020",
+    "course": "managing",
+    "type": "assignment",
+    "urgency": "info",
+    "title": "Mentor Final Report and Evaluation",
+    "date": "2026-05-13",
+    "detail": "Professional compilation of all Q&A, meeting summaries, dated evidence of all interactions, plus 6 reflection questions. Submit on Brightspace by 11:59 PM. No extensions."
+  },
+  {
+    "id": "bs-021",
+    "course": "marketing",
+    "type": "assignment",
+    "urgency": "info",
+    "title": "Final Exam (Weeks 9-14)",
+    "date": "2026-05-13",
+    "detail": "In-class at 11:00 AM, St. Roberts Hall Rm 239. Covers Weeks 9-14 content. Worth 30% of grade."
+  },
+  {
+    "id": "bs-022",
+    "course": "philosophy",
+    "type": "announcement",
+    "urgency": "info",
+    "title": "Reminder: Quizzes Nearly Every Class",
+    "date": "2026-03-24",
+    "detail": "Quizzes are given nearly every class period, based on the reading due that day plus previous discussion. No make-ups for tardy/absent students. Two lowest scores dropped. Worth 60% of final grade."
+  },
+  {
+    "id": "bs-023",
+    "course": "managing",
+    "type": "announcement",
+    "urgency": "info",
+    "title": "No Classes — Cesar Chavez Day & Easter",
+    "date": "2026-03-24",
+    "detail": "March 31 (Tue) is Cesar Chavez Day — no classes. April 2 (Thu) is Easter Holiday — no classes."
+  }
+]

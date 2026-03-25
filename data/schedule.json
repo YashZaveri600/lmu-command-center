@@ -1,0 +1,21 @@
+{
+  "days": {
+    "Mon": [
+      { "course": "managing", "time": "11:50 AM", "endTime": "1:30 PM", "location": "TBD" },
+      { "course": "philosophy", "time": "1:45 PM", "endTime": "3:25 PM", "location": "TBD" }
+    ],
+    "Tue": [
+      { "course": "marketing", "time": "11:50 AM", "endTime": "1:30 PM", "location": "TBD" },
+      { "course": "accounting", "time": "3:40 PM", "endTime": "5:20 PM", "location": "TBD" }
+    ],
+    "Wed": [
+      { "course": "managing", "time": "11:50 AM", "endTime": "1:30 PM", "location": "TBD" },
+      { "course": "philosophy", "time": "1:45 PM", "endTime": "3:25 PM", "location": "TBD" }
+    ],
+    "Thu": [
+      { "course": "marketing", "time": "11:50 AM", "endTime": "1:30 PM", "location": "TBD" },
+      { "course": "accounting", "time": "3:40 PM", "endTime": "5:20 PM", "location": "TBD" }
+    ],
+    "Fri": []
+  }
+}

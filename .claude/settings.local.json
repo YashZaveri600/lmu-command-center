@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(node scripts/sync-files.js)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__scheduled-tasks__list_scheduled_tasks",
+      "Bash(npx vite:*)",
+      "Bash(npm run:*)",
+      "Bash(gh auth:*)",
+      "Bash(git config:*)"
+    ]
+  }
+}

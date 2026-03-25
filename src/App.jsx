@@ -1,0 +1,101 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import Sidebar from './components/Sidebar'
+import SearchBar from './components/SearchBar'
+import Dashboard from './pages/Dashboard'
+import Updates from './pages/Updates'
+import Todos from './pages/Todos'
+import Emails from './pages/Emails'
+import Schedule from './pages/Schedule'
+import Files from './pages/Files'
+import Automations from './pages/Automations'
+import FocusMode from './pages/FocusMode'
+import DailyBriefing from './pages/DailyBriefing'
+import Grades from './pages/Grades'
+import Notes from './pages/Notes'
+import StudyTimer from './pages/StudyTimer'
+import CalendarView from './pages/CalendarView'
+import { useAPI, useSSE } from './hooks/useData'
+import { useDarkMode } from './hooks/useDarkMode'
+
+export default function App() {
+  const [page, setPage] = useState('briefing')
+  const [dark, toggleDark] = useDarkMode()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const { data: courses, setData: setCourses } = useAPI('courses')
+  const { data: updates, setData: setUpdates } = useAPI('updates')
+  const { data: todos, setData: setTodos } = useAPI('todos')
+  const { data: emails, setData: setEmails } = useAPI('emails')
+  const { data: schedule } = useAPI('schedule')
+  const { data: automations, setData: setAutomations } = useAPI('automations')
+  const { data: grades, setData: setGrades } = useAPI('grades')
+  const { data: notes, setData: setNotes } = useAPI('notes')
+  const { data: studySessions, setData: setStudySessions } = useAPI('study-sessions')
+  const { data: semester } = useAPI('semester')
+
+  const handleSSE = useCallback((type, data) => {
+    const setters = { updates: setUpdates, todos: setTodos, emails: setEmails, courses: setCourses, automations: setAutomations, grades: setGrades, notes: setNotes, 'study-sessions': setStudySessions }
+    if (setters[type]) setters[type](data)
+  }, [setUpdates, setTodos, setEmails, setCourses, setAutomations, setGrades, setNotes, setStudySessions])
+
+  useSSE(handleSSE)
+
+  const urgentCount = updates ? updates.filter(u => u.urgency === 'urgent').length : 0
+  const streak = studySessions?.streaks?.current || 0
+
+  const semesterProgress = useMemo(() => {
+    if (!semester) return null
+    const start = new Date(semester.startDate).getTime()
+    const end = new Date(semester.endDate).getTime()
+    const now = Date.now()
+    return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100))
+  }, [semester])
+
+  useEffect(() => {
+    const pending = todos ? todos.filter(t => !t.done).length : 0
+    document.title = pending > 0 ? `(${pending}) LMU Command Center` : 'LMU Command Center'
+  }, [todos])
+
+  const navigate = (p) => {
+    setPage(p)
+    setMobileMenuOpen(false)
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+        <h1 className="text-base font-bold text-gray-900 dark:text-white">LMU Command Center</h1>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-600 dark:text-gray-400">
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+            {mobileMenuOpen ? <path d="M6 6l12 12M6 18L18 6" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
+          </svg>
+        </button>
+      </div>
+
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-20 transform transition-transform duration-200 lg:relative lg:transform-none ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <Sidebar active={page} onNavigate={navigate} dark={dark} toggleDark={toggleDark} urgentCount={urgentCount} streak={streak} semesterProgress={semesterProgress} />
+      </div>
+      {mobileMenuOpen && <div className="fixed inset-0 bg-black/30 z-10 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
+
+      <main className="flex-1 p-4 pt-16 lg:pt-6 lg:p-8 max-w-6xl overflow-y-auto">
+        {page !== 'briefing' && <SearchBar courses={courses} onNavigate={navigate} />}
+
+        {page === 'briefing' && <DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} />}
+        {page === 'dashboard' && <Dashboard updates={updates} todos={todos} emails={emails} courses={courses} onNavigate={navigate} />}
+        {page === 'updates' && <Updates updates={updates} courses={courses} />}
+        {page === 'todos' && <Todos todos={todos} courses={courses} setTodos={setTodos} />}
+        {page === 'emails' && <Emails emails={emails} courses={courses} />}
+        {page === 'schedule' && <Schedule schedule={schedule} courses={courses} updates={updates} />}
+        {page === 'files' && <Files courses={courses} setCourses={setCourses} />}
+        {page === 'automations' && <Automations automations={automations} />}
+        {page === 'focus' && <FocusMode updates={updates} todos={todos} courses={courses} onNavigate={navigate} />}
+        {page === 'grades' && <Grades grades={grades} courses={courses} setGrades={setGrades} />}
+        {page === 'notes' && <Notes notes={notes} courses={courses} setNotes={setNotes} />}
+        {page === 'study' && <StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} />}
+        {page === 'calendar' && <CalendarView updates={updates} courses={courses} semester={semester} />}
+      </main>
+    </div>
+  )
+}

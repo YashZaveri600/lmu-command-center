@@ -1,0 +1,11 @@
+{
+  "name": "Spring 2026",
+  "startDate": "2026-01-12",
+  "endDate": "2026-05-13",
+  "holidays": [
+    { "date": "2026-01-19", "name": "MLK Day" },
+    { "dates": ["2026-03-02", "2026-03-06"], "name": "Spring Break" },
+    { "date": "2026-03-31", "name": "Cesar Chavez Day" },
+    { "date": "2026-04-02", "name": "Easter Holiday" }
+  ]
+}

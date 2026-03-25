@@ -1,0 +1,213 @@
+[
+  {
+    "id": "managing",
+    "name": "Managing People & Organizations",
+    "shortCode": "MGMT",
+    "color": "#8B1A1A",
+    "professor": "Andrea Schlaerth",
+    "schedule": {
+      "days": [
+        "Mon",
+        "Wed"
+      ],
+      "time": "11:50 AM"
+    },
+    "folders": [
+      {
+        "name": "Assignments",
+        "files": [
+          "Mentoring Assignment Detailed Description Spring26.pdf",
+          "Mentoring Relationship Development Plan.pdf",
+          "Sample mentor assignment Suzie Q Fall 2020.pdf",
+          "Yash Zaveri - Mentor Progress Report Spring 2026.docx"
+        ]
+      },
+      {
+        "name": "Handouts",
+        "files": [
+          "ManagingPeople - Exam 1 Study Guide.pdf",
+          "ManagingPeople - Exam 2 Instructions.pdf",
+          "ManagingPeople - Week 14 Case Study Practice.pdf",
+          "ManagingPeople - Week 14 Exam 2 Practice.pdf",
+          "ManagingPeople - Week 4 Leadership Characteristics.pdf",
+          "ManagingPeople - Week 5 Conflict Management Strategies.pdf"
+        ]
+      },
+      {
+        "name": "Slides",
+        "files": [
+          "ManagingPeople - Week 1 Lecture 1.12.pptx",
+          "ManagingPeople - Week 1 Lecture 1.14.pdf",
+          "ManagingPeople - Week 2 Lecture 1.21.pdf",
+          "ManagingPeople - Week 3 Lecture 1.26.pdf",
+          "ManagingPeople - Week 3 Lecture 1.28.pdf",
+          "ManagingPeople - Week 4 Lecture 2.2.pdf",
+          "ManagingPeople - Week 4 Lecture 2.4.pdf",
+          "ManagingPeople - Week 5 Lecture 2.11.pdf",
+          "ManagingPeople - Week 7 Lecture 2.23.pdf",
+          "ManagingPeople - Week 7 Lecture 2.25.pdf"
+        ]
+      },
+      {
+        "name": "Syllabus",
+        "files": [
+          "ManagingPeople - Syllabus Spring 2026.pdf"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "philosophy",
+    "name": "Philosophical Inquiry",
+    "shortCode": "PHIL",
+    "color": "#1A3B5C",
+    "professor": "Dr. Michael Patzia",
+    "schedule": {
+      "days": [
+        "Mon",
+        "Wed"
+      ],
+      "time": "1:45 PM"
+    },
+    "folders": [
+      {
+        "name": "Assignments",
+        "files": [
+          "PhilInquiry - Assignment Republic Paper Spring 2026.docx"
+        ]
+      },
+      {
+        "name": "Handouts",
+        "files": [
+          "PhilInquiry - Handout Apology and Crito Outline.doc",
+          "PhilInquiry - Handout Euthyphro Reading Questions.docx",
+          "PhilInquiry - Handout Pre-Socratic Philosophers.ppt",
+          "PhilInquiry - Handout Sophies World 1-78.pdf"
+        ]
+      },
+      {
+        "name": "Slides",
+        "files": []
+      },
+      {
+        "name": "Syllabus",
+        "files": [
+          "PhilInquiry - Syllabus Spring 2026.docx"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "marketing",
+    "name": "Marketing & Business Communications",
+    "shortCode": "MKTG",
+    "color": "#2D6A4F",
+    "professor": "Jamie Weissenborn",
+    "schedule": {
+      "days": [
+        "Tue",
+        "Thu"
+      ],
+      "time": "11:50 AM"
+    },
+    "folders": [
+      {
+        "name": "Assignments",
+        "files": [
+          "MktgBizComm - Team App Project Brief.docx"
+        ]
+      },
+      {
+        "name": "Handouts",
+        "files": []
+      },
+      {
+        "name": "Slides",
+        "files": [
+          "MktgBizComm - Mid Term Review.pptx",
+          "MktgBizComm - Session 1 Day 1 Intros.pptx",
+          "MktgBizComm - Session 10 Pricing.pptx",
+          "MktgBizComm - Session 11 Distribution.pptx",
+          "MktgBizComm - Session 12 Promotional Planning.pptx",
+          "MktgBizComm - Session 2 What is Marketing.pptx",
+          "MktgBizComm - Session 3 Strategic Planning.pptx",
+          "MktgBizComm - Session 4 Market Behavior Research.pptx",
+          "MktgBizComm - Session 5 Segment Targeting.pptx",
+          "MktgBizComm - Session 6 Global Context.pptx",
+          "MktgBizComm - Session 7 Product Concepts Brands.pptx",
+          "MktgBizComm - Session 8 Co-Promotions.pptx",
+          "MktgBizComm - Session 9 Ethics CSR.pptx"
+        ]
+      },
+      {
+        "name": "Syllabus",
+        "files": [
+          "MktgBizComm - Course Outline.docx",
+          "MktgBizComm - SYLLABUS.docx"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "accounting",
+    "name": "Managerial Accounting",
+    "shortCode": "ACCT",
+    "color": "#7B2D8B",
+    "professor": "Fumihide Itokazu",
+    "schedule": {
+      "days": [
+        "Tue",
+        "Thu"
+      ],
+      "time": "3:40 PM"
+    },
+    "folders": [
+      {
+        "name": "Assignments",
+        "files": []
+      },
+      {
+        "name": "Handouts",
+        "files": [
+          "Accounting - Lecture Problems Ch1 Solutions.xlsx",
+          "Accounting - Lecture Problems Ch1.xlsx",
+          "Accounting - Lecture Problems Ch2 Solutions.xlsx",
+          "Accounting - Lecture Problems Ch2.xlsx",
+          "Accounting - Lecture Problems Ch3 Solutions.xlsx",
+          "Accounting - Lecture Problems Ch3.xlsx",
+          "Accounting - Lecture Problems Ch5 Solutions.xlsx",
+          "Accounting - Lecture Problems Ch5.xlsx",
+          "Accounting - Lecture Problems Ch6.xlsx",
+          "Accounting - WTP Chapter 1.docx",
+          "Accounting - WTP Chapter 2.docx",
+          "Accounting - WTP Chapter 3.docx",
+          "Accounting - WTP Chapter 5.docx",
+          "Accounting - WTP Chapter 6.docx",
+          "Accounting - WTP Prologue Managerial Accounting.docx"
+        ]
+      },
+      {
+        "name": "Slides",
+        "files": [
+          "Accounting - Slides Chapter 1.pptx",
+          "Accounting - Slides Chapter 10.pptx",
+          "Accounting - Slides Chapter 11.pptx",
+          "Accounting - Slides Chapter 12.pptx",
+          "Accounting - Slides Chapter 13.pptx",
+          "Accounting - Slides Chapter 14.pptx",
+          "Accounting - Slides Chapter 2.pptx",
+          "Accounting - Slides Chapter 3.pptx",
+          "Accounting - Slides Chapter 5.pptx",
+          "Accounting - Slides Chapter 6.pptx",
+          "Accounting - Slides Chapter 8.pptx"
+        ]
+      },
+      {
+        "name": "Syllabus",
+        "files": [
+          "Accounting - Syllabus Spring 2026.docx"
+        ]
+      }
+    ]
+  }
+]

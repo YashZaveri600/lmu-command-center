@@ -1,0 +1,47 @@
+[
+  {
+    "id": "email-001",
+    "course": "managing",
+    "subject": "Team Project Progress Report — Due Tomorrow (Wed 3/25)",
+    "from": "Andrea Schlaerth",
+    "date": "2026-03-24",
+    "preview": "Reminder: Your team's progress report is due by the beginning of class tomorrow (Wednesday). Download the PPT template from Brightspace under Week 10 and submit one per team. Make sure all team members are listed.",
+    "important": true
+  },
+  {
+    "id": "email-002",
+    "course": "accounting",
+    "subject": "Midterm 2 Thursday — What to Bring",
+    "from": "Fumihide Itokazu",
+    "date": "2026-03-24",
+    "preview": "Midterm 2 is this Thursday during our regular class time (3:40-5:20 PM). It covers Chapters 5, 6, and 8. Bring a pencil, calculator, and your student ID. No phones or smart watches allowed. Review the lecture problems and discussion questions for best preparation.",
+    "important": true
+  },
+  {
+    "id": "email-003",
+    "course": "marketing",
+    "subject": "Part 3 Practice Presentation Thursday + Final Presentation Prep",
+    "from": "Jamie Weissenborn",
+    "date": "2026-03-23",
+    "preview": "Your Part 3 Brand Development practice presentation is this Thursday. This is pass/fail with feedback. Use this as a dry run for your final presentation on April 9. After spring break, you'll also need to submit your individual Pitch Vantage oral practice (April 7).",
+    "important": true
+  },
+  {
+    "id": "email-004",
+    "course": "philosophy",
+    "subject": "Republic Paper Due Monday March 30",
+    "from": "Dr. Michael Patzia",
+    "date": "2026-03-22",
+    "preview": "Your Republic Position Paper is due Monday, March 30. Remember: pick ONE aspect of Plato's Republic to describe and critique. 5+ pages, double-spaced. First third should be descriptive, the rest argumentative. You must interact with an opposing viewpoint. Use textual citations — no bibliography needed. Late papers will NOT be accepted.",
+    "important": false
+  },
+  {
+    "id": "email-005",
+    "course": "managing",
+    "subject": "Upcoming: 12 Angry Men Assignment + Holiday Week Schedule",
+    "from": "Andrea Schlaerth",
+    "date": "2026-03-20",
+    "preview": "During the holiday week (Week 11), please watch '12 Angry Men' and complete the movie questions. Submit your answers via email by the beginning of class on April 8. Also note: Cesar Chavez Day is March 31 and Easter is April 2 — no classes either day.",
+    "important": false
+  }
+]

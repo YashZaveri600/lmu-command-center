@@ -1,0 +1,74 @@
+[
+  {
+    "id": "todo-001",
+    "course": "managing",
+    "task": "Submit Team Project Progress Report (PPT template from Brightspace)",
+    "due": "2026-03-25",
+    "done": false,
+    "priority": "high"
+  },
+  {
+    "id": "todo-002",
+    "course": "accounting",
+    "task": "Study for Midterm 2 — Chapters 5, 6, 8",
+    "due": "2026-03-26",
+    "done": false,
+    "priority": "high"
+  },
+  {
+    "id": "todo-003",
+    "course": "marketing",
+    "task": "Prepare Part 3: Brand Development practice presentation",
+    "due": "2026-03-26",
+    "done": false,
+    "priority": "high"
+  },
+  {
+    "id": "todo-004",
+    "course": "philosophy",
+    "task": "Write Republic Position Paper (5+ pages, due Mon 3/30)",
+    "due": "2026-03-30",
+    "done": false,
+    "priority": "high"
+  },
+  {
+    "id": "todo-005",
+    "course": "philosophy",
+    "task": "Complete reading for next quiz (nearly every class)",
+    "due": "2026-03-25",
+    "done": false,
+    "priority": "medium"
+  },
+  {
+    "id": "todo-006",
+    "course": "marketing",
+    "task": "Start preparing individual Pitch Vantage oral practice (2-3 min)",
+    "due": "2026-04-07",
+    "done": false,
+    "priority": "medium"
+  },
+  {
+    "id": "todo-007",
+    "course": "managing",
+    "task": "Watch '12 Angry Men' and answer questions",
+    "due": "2026-04-08",
+    "done": false,
+    "priority": "low"
+  },
+  {
+    "id": "todo-008",
+    "course": "accounting",
+    "task": "Start HW7 — Chapter 10 (Connect)",
+    "due": "2026-04-09",
+    "done": false,
+    "priority": "low"
+  },
+  {
+    "id": "todo-009",
+    "course": "marketing",
+    "task": "Work on final app project presentation (slides, screenshots, video)",
+    "due": "2026-04-09",
+    "done": false,
+    "priority": "medium"
+  }
+]

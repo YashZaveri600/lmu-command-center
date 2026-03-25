@@ -1,0 +1,49 @@
+{
+  "courses": {
+    "managing": {
+      "weights": {
+        "Exam 1": { "weight": 0.12, "points": 60 },
+        "Exam 2": { "weight": 0.12, "points": 60 },
+        "Mentoring Assignment": { "weight": 0.12, "points": 60 },
+        "Group Field Project": { "weight": 0.16, "points": 80 },
+        "Individual Presentation": { "weight": 0.08, "points": 40 },
+        "Connect Homework": { "weight": 0.08, "points": 40 },
+        "Attendance/Participation": { "weight": 0.12, "points": 60 },
+        "Peer Evaluation": { "weight": 0.04, "points": 20 },
+        "CBA Advantage Points": { "weight": 0.16, "points": 80 }
+      },
+      "grades": []
+    },
+    "philosophy": {
+      "weights": {
+        "Quizzes": { "weight": 0.60 },
+        "Republic Position Paper": { "weight": 0.20 },
+        "Final Exam": { "weight": 0.20 }
+      },
+      "grades": []
+    },
+    "marketing": {
+      "weights": {
+        "Mid-Term Exam": { "weight": 0.25 },
+        "Final Exam": { "weight": 0.30 },
+        "Case Studies": { "weight": 0.10 },
+        "App Project": { "weight": 0.15 },
+        "Pitch Vantage": { "weight": 0.05 },
+        "Participation": { "weight": 0.15 }
+      },
+      "grades": []
+    },
+    "accounting": {
+      "weights": {
+        "Midterm 1": { "weight": 0.25, "points": 250 },
+        "Midterm 2": { "weight": 0.25, "points": 250 },
+        "Final Exam": { "weight": 0.25, "points": 250 },
+        "Homework": { "weight": 0.10, "points": 100 },
+        "Discussion Questions": { "weight": 0.05, "points": 50 },
+        "Classwork": { "weight": 0.05, "points": 50 },
+        "Group Project": { "weight": 0.05, "points": 50 }
+      },
+      "grades": []
+    }
+  }
+}
