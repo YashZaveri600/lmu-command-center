@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Plus, Trash2, TrendingUp, Award } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+import WhatIfCalculator from '../components/WhatIfCalculator'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -145,6 +146,9 @@ export default function Grades({ grades, courses, setGrades }) {
           <p className="text-5xl font-bold text-gray-900 dark:text-white">{overallGPA.toFixed(2)}</p>
         </div>
       )}
+
+      {/* What-If Calculator */}
+      <WhatIfCalculator grades={grades} courses={courses} />
 
       {/* Add Grade Form */}
       {showForm && (
