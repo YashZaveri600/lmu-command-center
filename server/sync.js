@@ -83,18 +83,18 @@ const NAME_CATEGORY_RULES = {
 }
 
 function inferCategory(appId, gradeName, apiCategory) {
-  // These are Brightspace grade TYPE names, not actual categories — skip them
-  const IGNORE_TYPES = ['Uncategorized', 'Numeric', 'Pass/Fail', 'Category', 'Text', 'Formula', 'Calculated', 'Final Calculated Grade', 'Final Adjusted Grade']
-  if (apiCategory && !IGNORE_TYPES.includes(apiCategory)) {
+  // If we have a real category from Brightspace grade objects API, use it
+  if (apiCategory) {
     return apiCategory
   }
+  // Try name-based inference rules
   const rules = NAME_CATEGORY_RULES[appId]
   if (rules) {
     for (const rule of rules) {
       if (rule.match.test(gradeName)) return rule.category
     }
   }
-  return apiCategory || 'Uncategorized'
+  return 'Uncategorized'
 }
 
 // ─── Main sync function ───
@@ -146,27 +146,37 @@ export async function syncUserData(userId, cookie) {
       })
       results.courses++
 
-      // 3. Fetch grades + categories for this course
+      // 3. Fetch grades + categories + grade objects for this course
       try {
-        const [grades, categories] = await Promise.all([
+        const [grades, categories, gradeObjects] = await Promise.all([
           brightspace.fetchGrades(enrollment.brightspaceId, cookie),
           brightspace.fetchCategories(enrollment.brightspaceId, cookie),
+          brightspace.fetchGradeObjects(enrollment.brightspaceId, cookie),
         ])
 
         // Build weights from categories
         const weights = {}
+        const categoryMap = {} // categoryId → categoryName
         if (categories.length > 0) {
           categories.forEach(cat => {
             if (cat.name && cat.weight > 0) {
               weights[cat.name] = { weight: cat.weight / 100 }
               if (cat.maxPoints) weights[cat.name].points = cat.maxPoints
             }
+            categoryMap[cat.id] = cat.name
           })
         }
 
-        // Build category lookup from grade objects (for category mapping)
-        const categoryMap = {}
-        categories.forEach(cat => { categoryMap[cat.id] = cat.name })
+        // Build grade object lookup: gradeObjectId → categoryName
+        // This is the KEY mapping — grade values don't have categories, grade objects do
+        const gradeObjectCategoryMap = {}
+        gradeObjects.forEach(obj => {
+          if (obj.categoryId && categoryMap[obj.categoryId]) {
+            gradeObjectCategoryMap[obj.id] = categoryMap[obj.categoryId]
+          }
+        })
+
+        console.log(`[sync] ${appId}: categoryMap=${JSON.stringify(categoryMap)}, gradeObjCategories=${Object.keys(gradeObjectCategoryMap).length}/${gradeObjects.length}`)
 
         // Map grades with smart category inference
         // Filter out summary rows and invalid grades
@@ -175,7 +185,8 @@ export async function syncUserData(userId, cookie) {
           .filter(g => g.maxPoints > 0 && g.points !== null && !SKIP_TYPES.includes(g.type))
           .map(g => ({
             id: `grade-${appId}-bs-${g.id}`,
-            category: inferCategory(appId, g.name, categoryMap[g.categoryId] || g.type),
+            // Priority: 1) grade object category lookup, 2) name-based inference, 3) 'Uncategorized'
+            category: inferCategory(appId, g.name, gradeObjectCategoryMap[g.id] || null),
             name: g.name,
             score: g.points ?? 0,
             maxScore: g.maxPoints ?? 100,
