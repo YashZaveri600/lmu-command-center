@@ -516,6 +516,17 @@ async function search(userId, query) {
   }
 }
 
+// ─── Cleanup: remove old courses ───
+async function deleteCoursesNotIn(userId, currentAppIds) {
+  if (!currentAppIds || currentAppIds.length === 0) return
+  const placeholders = currentAppIds.map((_, i) => `$${i + 2}`).join(', ')
+  // Delete grades, announcements, todos, etc. for old courses first
+  await q(`DELETE FROM grades WHERE user_id = $1 AND course_app_id NOT IN (${placeholders})`, [userId, ...currentAppIds])
+  await q(`DELETE FROM grade_weights WHERE user_id = $1 AND course_app_id NOT IN (${placeholders})`, [userId, ...currentAppIds])
+  await q(`DELETE FROM announcements WHERE user_id = $1 AND course_app_id NOT IN (${placeholders})`, [userId, ...currentAppIds])
+  await q(`DELETE FROM courses WHERE user_id = $1 AND app_id NOT IN (${placeholders})`, [userId, ...currentAppIds])
+}
+
 // ─── Export ───
 export default {
   pool,
@@ -532,4 +543,5 @@ export default {
   findOrCreateUser, getUser,
   saveTokens, getTokens,
   search,
+  deleteCoursesNotIn,
 }

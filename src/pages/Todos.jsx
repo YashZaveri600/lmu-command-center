@@ -73,7 +73,7 @@ export default function Todos({ todos, courses, setTodos }) {
           />
           <div className="flex flex-wrap gap-3">
             <select value={newCourse} onChange={e => setNewCourse(e.target.value)} className="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-              {courses.map(c => <option key={c.id} value={c.id}>{c.shortCode} - {c.name}</option>)}
+              {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <input type="date" value={newDue} onChange={e => setNewDue(e.target.value)} className="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
             <select value={newPriority} onChange={e => setNewPriority(e.target.value)} className="text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">

@@ -46,7 +46,7 @@ export default function Updates({ updates, courses }) {
         >
           <option value="all">All Courses</option>
           {courses.map(c => (
-            <option key={c.id} value={c.id}>{c.name || c.shortCode}</option>
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
       </div>

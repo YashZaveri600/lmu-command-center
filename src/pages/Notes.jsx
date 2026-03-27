@@ -96,7 +96,7 @@ export default function Notes({ notes, courses, setNotes }) {
               }`}
               style={filterCourse === c.id ? { backgroundColor: c.color } : {}}
             >
-              {c.shortCode}
+              {c.name}
             </button>
           ))}
         </div>

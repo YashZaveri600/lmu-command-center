@@ -210,7 +210,7 @@ export default function Grades({ grades, courses, setGrades }) {
                   <Line
                     key={cId}
                     dataKey={cId}
-                    name={getCourseInfo(courses, cId).shortCode || cId}
+                    name={getCourseInfo(courses, cId).name || cId}
                     stroke={CHART_COLORS[idx % CHART_COLORS.length]}
                     strokeWidth={2}
                     dot={{ r: 3 }}

@@ -258,7 +258,7 @@ export default function CalendarView({ updates, todos, courses, semester }) {
         {courses.map(c => (
           <div key={c.id} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
-            {c.shortCode}
+            {c.name}
           </div>
         ))}
       </div>

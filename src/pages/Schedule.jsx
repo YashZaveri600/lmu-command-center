@@ -43,8 +43,7 @@ export default function Schedule({ schedule, courses, updates }) {
                     return (
                       <div key={i} className="rounded-lg p-3" style={{ backgroundColor: course.color + '15' }}>
                         <div className="w-full h-1 rounded-full mb-2" style={{ backgroundColor: course.color }} />
-                        <p className="text-xs font-bold" style={{ color: course.color }}>{course.shortCode}</p>
-                        <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5">{course.name}</p>
+                        <p className="text-xs font-bold" style={{ color: course.color }}>{course.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{cls.time} - {cls.endTime}</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500">{cls.location}</p>
                       </div>

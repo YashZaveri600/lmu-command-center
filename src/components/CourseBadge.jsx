@@ -8,7 +8,7 @@ export default function CourseBadge({ courseId, courses, className = '' }) {
       className={`inline-block px-2 py-0.5 rounded text-xs font-semibold text-white ${className}`}
       style={{ backgroundColor: course.color }}
     >
-      {course.shortCode}
+      {course.name}
     </span>
   )
 }
