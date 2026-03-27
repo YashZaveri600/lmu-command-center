@@ -68,7 +68,7 @@ export default function Settings({ user }) {
       if (data.ok) {
         setSyncResult({
           type: 'success',
-          message: `Synced ${data.results.grades} grades from ${data.results.courses} courses. ${data.results.announcements} new announcements.${data.results.errors.length > 0 ? ` (${data.results.errors.length} warnings)` : ''}`,
+          message: `Synced ${data.results.grades} grades from ${data.results.courses} courses. ${data.results.announcements} new announcements. ${data.results.tasks || 0} tasks found${data.results.completed ? ` (${data.results.completed} auto-completed)` : ''}.${data.results.errors?.length > 0 ? ` (${data.results.errors.length} warnings)` : ''}`,
         })
         setLastSync(new Date())
       } else {

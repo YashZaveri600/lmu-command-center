@@ -10,9 +10,19 @@ const pool = new Pool({
   ssl: connString?.includes('railway') ? { rejectUnauthorized: false } : false,
 })
 
-// Test connection
-pool.query('SELECT NOW()').then(() => {
+// Test connection + run migrations
+pool.query('SELECT NOW()').then(async () => {
   console.log('[db] Connected to PostgreSQL')
+  // Add source tracking columns to todos table (idempotent)
+  try {
+    await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'manual'`)
+    await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS source_id VARCHAR(200)`)
+    // Create unique index for upsert dedup (only on non-null source_id)
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS todos_user_source_id_idx ON todos(user_id, source_id) WHERE source_id IS NOT NULL`)
+    console.log('[db] Migrations complete')
+  } catch (e) {
+    console.log('[db] Migration note:', e.message)
+  }
 }).catch(err => {
   console.error('[db] Connection failed:', err.message)
 })
@@ -139,7 +149,7 @@ async function upsertGrades(userId, courseAppId, gradesData) {
 // Returns: [ { id, course, task, due, done, priority } ]
 async function getTodos(userId) {
   const { rows } = await q(
-    `SELECT id, course_app_id AS course, task, due, done, priority
+    `SELECT id, course_app_id AS course, task, due, done, priority, source
      FROM todos WHERE user_id = $1 ORDER BY due ASC`,
     [userId]
   )
@@ -147,6 +157,7 @@ async function getTodos(userId) {
     ...t,
     id: `todo-${t.id}`,
     due: t.due ? t.due.toISOString().split('T')[0] : null,
+    source: t.source || 'manual',
   }))
 }
 
@@ -176,6 +187,27 @@ async function updateTodo(userId, todoId, updates) {
 async function deleteTodo(userId, todoId) {
   const dbId = parseInt(todoId.replace('todo-', ''))
   await q('DELETE FROM todos WHERE user_id = $1 AND id = $2', [userId, dbId])
+}
+
+// Upsert a synced todo — inserts if source_id doesn't exist, updates done status if it does
+async function upsertSyncedTodo(userId, todo) {
+  const { rows } = await q(
+    `INSERT INTO todos (user_id, course_app_id, task, due, done, priority, source, source_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (user_id, source_id) WHERE source_id IS NOT NULL
+     DO UPDATE SET done = EXCLUDED.done, task = EXCLUDED.task, due = EXCLUDED.due
+     RETURNING id`,
+    [userId, todo.course, todo.task, todo.due || null, todo.done || false, todo.priority || 'medium', todo.source || 'brightspace', todo.sourceId]
+  )
+  return rows[0]?.id
+}
+
+// Mark synced todo as done by source_id
+async function markSyncedTodoDone(userId, sourceId) {
+  await q(
+    `UPDATE todos SET done = true WHERE user_id = $1 AND source_id = $2`,
+    [userId, sourceId]
+  )
 }
 
 // ─── Announcements / Updates ───
@@ -489,7 +521,7 @@ export default {
   pool,
   getCourses, upsertCourse,
   getGrades, addGrade, deleteGrade, upsertGrades,
-  getTodos, addTodo, updateTodo, deleteTodo,
+  getTodos, addTodo, updateTodo, deleteTodo, upsertSyncedTodo, markSyncedTodoDone,
   getUpdates, upsertUpdates,
   getEmails, upsertEmails,
   getNotes, addNote, deleteNote,

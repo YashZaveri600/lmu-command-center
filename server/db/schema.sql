@@ -87,7 +87,10 @@ CREATE TABLE IF NOT EXISTS todos (
   due DATE,
   done BOOLEAN DEFAULT FALSE,
   priority VARCHAR(20) DEFAULT 'medium',
-  created_at TIMESTAMP DEFAULT NOW()
+  source VARCHAR(50) DEFAULT 'manual',  -- 'manual', 'brightspace', 'ai-announcement', 'ai-email'
+  source_id VARCHAR(200),               -- unique ID from source (e.g. 'bs-assignment-12345') for dedup
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, source_id)
 );
 
 -- Notes

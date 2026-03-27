@@ -197,6 +197,52 @@ export async function fetchGradeObjects(courseId, cookie) {
   }
 }
 
+// ─── Get assignments (dropbox folders) for a course ───
+export async function fetchAssignments(courseId, cookie) {
+  try {
+    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/dropbox/folders/`, cookie)
+    return (data || []).map(folder => ({
+      id: folder.Id,
+      name: folder.Name,
+      dueDate: folder.DueDate || null,
+      endDate: folder.EndDate || null,
+      instructions: folder.Instructions?.Html || folder.Instructions?.Text || '',
+      isHidden: folder.IsHidden || false,
+    }))
+  } catch (e) {
+    console.log(`[brightspace] No assignments/dropbox for course ${courseId}: ${e.message}`)
+    return []
+  }
+}
+
+// ─── Check my submissions for an assignment ───
+export async function fetchMySubmissions(courseId, folderId, cookie) {
+  try {
+    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/dropbox/folders/${folderId}/submissions/mysubmissions`, cookie)
+    return (data || []).length > 0
+  } catch (e) {
+    // If endpoint doesn't exist or returns error, assume not submitted
+    return false
+  }
+}
+
+// ─── Get quizzes for a course ───
+export async function fetchQuizzes(courseId, cookie) {
+  try {
+    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/quizzes/`, cookie)
+    return (data || []).map(quiz => ({
+      id: quiz.QuizId,
+      name: quiz.Name,
+      dueDate: quiz.DueDate || quiz.EndDate || null,
+      instructions: quiz.Description?.Html || quiz.Description?.Text || '',
+      isActive: quiz.IsActive,
+    }))
+  } catch (e) {
+    console.log(`[brightspace] No quizzes for course ${courseId}: ${e.message}`)
+    return []
+  }
+}
+
 // ─── Get announcements/news for a course ───
 export async function fetchAnnouncements(courseId, cookie) {
   try {
@@ -234,6 +280,9 @@ export default {
   fetchGrades,
   fetchCategories,
   fetchGradeObjects,
+  fetchAssignments,
+  fetchMySubmissions,
+  fetchQuizzes,
   fetchAnnouncements,
   fetchWhoAmI,
 }

@@ -396,14 +396,16 @@ app.post('/api/sync', async (req, res) => {
     }
 
     // Broadcast updates to any connected SSE clients
-    const [grades, updates, courses] = await Promise.all([
+    const [grades, updates, courses, todos] = await Promise.all([
       db.getGrades(uid),
       db.getUpdates(uid),
       db.getCourses(uid),
+      db.getTodos(uid),
     ])
     broadcast('grades', grades)
     broadcast('updates', updates)
     broadcast('courses', courses)
+    broadcast('todos', todos)
 
     res.json({ ok: true, results })
   } catch (e) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Zap, Bot, BookOpen } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import { patchTodo, createTodo, deleteTodo } from '../hooks/useData'
 
@@ -122,6 +122,15 @@ function TodoItem({ item, courses, onToggle, onDelete, priorityColors }) {
       <span className={`flex-1 text-sm ${item.done ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
         {item.task}
       </span>
+      {item.source && item.source !== 'manual' && (
+        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center gap-1" title={
+          item.source === 'brightspace' ? 'Synced from Brightspace' :
+          item.source?.startsWith('ai') ? 'Detected by AI' : item.source
+        }>
+          {item.source === 'brightspace' ? <BookOpen size={10} /> : <Bot size={10} />}
+          {item.source === 'brightspace' ? 'BS' : 'AI'}
+        </span>
+      )}
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[item.priority]}`}>
         {item.priority}
       </span>
