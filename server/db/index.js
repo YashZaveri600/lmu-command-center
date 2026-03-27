@@ -422,8 +422,17 @@ async function upsertAutomations(userId, automations) {
 
 // ─── Users ───
 async function findOrCreateUser(microsoftId, email, displayName) {
+  // Check by Microsoft ID first
   const { rows } = await q('SELECT id FROM users WHERE microsoft_id = $1', [microsoftId])
   if (rows.length > 0) return rows[0].id
+
+  // Check by email (user may exist from seed data without a Microsoft ID)
+  const { rows: emailRows } = await q('SELECT id FROM users WHERE email = $1', [email])
+  if (emailRows.length > 0) {
+    // Link existing user to their Microsoft account
+    await q('UPDATE users SET microsoft_id = $1, display_name = $2 WHERE id = $3', [microsoftId, displayName, emailRows[0].id])
+    return emailRows[0].id
+  }
 
   const result = await q(
     `INSERT INTO users (microsoft_id, email, display_name) VALUES ($1, $2, $3) RETURNING id`,
