@@ -2,95 +2,582 @@
   "courses": {
     "managing": {
       "weights": {
-        "Exam 1": { "weight": 0.12, "points": 60 },
-        "Exam 2": { "weight": 0.12, "points": 60 },
-        "Mentoring Assignment": { "weight": 0.12, "points": 60 },
-        "Group Field Project": { "weight": 0.16, "points": 80 },
-        "Individual Presentation": { "weight": 0.08, "points": 40 },
-        "Connect Homework": { "weight": 0.08, "points": 40 },
-        "Attendance/Participation": { "weight": 0.12, "points": 60 },
-        "Peer Evaluation": { "weight": 0.04, "points": 20 },
-        "CBA Advantage Points": { "weight": 0.16, "points": 80 }
+        "Exam 1": {
+          "weight": 0.12,
+          "points": 60
+        },
+        "Exam 2": {
+          "weight": 0.12,
+          "points": 60
+        },
+        "Mentoring Assignment": {
+          "weight": 0.12,
+          "points": 60
+        },
+        "Group Field Project": {
+          "weight": 0.16,
+          "points": 80
+        },
+        "Individual Presentation": {
+          "weight": 0.08,
+          "points": 40
+        },
+        "Connect Homework": {
+          "weight": 0.08,
+          "points": 40
+        },
+        "Attendance/Participation": {
+          "weight": 0.12,
+          "points": 60
+        },
+        "Peer Evaluation": {
+          "weight": 0.04,
+          "points": 20
+        },
+        "CBA Advantage Points": {
+          "weight": 0.16,
+          "points": 80
+        }
       },
       "grades": [
-        { "id": "grade-mgmt-exam1", "category": "Exam 1", "name": "Exam #1", "score": 58, "maxScore": 60, "date": "2026-02-20" },
-        { "id": "grade-mgmt-mentor", "category": "Mentoring Assignment", "name": "Mentoring Assignment", "score": 60, "maxScore": 60, "date": "2026-03-01" },
-        { "id": "grade-mgmt-attend1", "category": "Attendance/Participation", "name": "Week 1 Attendance", "score": 2, "maxScore": 2, "date": "2026-01-15" },
-        { "id": "grade-mgmt-attend2", "category": "Attendance/Participation", "name": "Week 2 Attendance", "score": 2, "maxScore": 2, "date": "2026-01-22" },
-        { "id": "grade-mgmt-attend3", "category": "Attendance/Participation", "name": "Week 3 Attendance", "score": 1, "maxScore": 2, "date": "2026-01-29" },
-        { "id": "grade-mgmt-attend4", "category": "Attendance/Participation", "name": "Week 4 Attendance", "score": 1, "maxScore": 2, "date": "2026-02-05" },
-        { "id": "grade-mgmt-attend5", "category": "Attendance/Participation", "name": "Week 5 Attendance", "score": 1, "maxScore": 2, "date": "2026-02-12" },
-        { "id": "grade-mgmt-attend6", "category": "Attendance/Participation", "name": "Week 6 Attendance", "score": 4, "maxScore": 4, "date": "2026-02-19" },
-        { "id": "grade-mgmt-attend7", "category": "Attendance/Participation", "name": "Week 7 Attendance", "score": 1, "maxScore": 2, "date": "2026-02-26" },
-        { "id": "grade-mgmt-attend8", "category": "Attendance/Participation", "name": "Week 8 Attendance", "score": 2, "maxScore": 2, "date": "2026-03-05" },
-        { "id": "grade-mgmt-hw1", "category": "Connect Homework", "name": "Week 1 Application Exercises", "score": 1, "maxScore": 1, "date": "2026-01-15" },
-        { "id": "grade-mgmt-hw2", "category": "Connect Homework", "name": "What is Organizational Behavior?", "score": 1, "maxScore": 1, "date": "2026-01-20" },
-        { "id": "grade-mgmt-hw3", "category": "Connect Homework", "name": "Human Resource Management", "score": 2, "maxScore": 2, "date": "2026-01-27" },
-        { "id": "grade-mgmt-hw4", "category": "Connect Homework", "name": "Organizational Structure", "score": 1, "maxScore": 1, "date": "2026-02-03" },
-        { "id": "grade-mgmt-hw5", "category": "Connect Homework", "name": "Leadership: Styles and Behaviors", "score": 1, "maxScore": 1, "date": "2026-03-10" }
+        {
+          "id": "grade-managing-bs-802401",
+          "category": "Numeric",
+          "name": "Exam #1",
+          "score": 58,
+          "maxScore": 60,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802404",
+          "category": "Numeric",
+          "name": "Mentoring Assignment",
+          "score": 60,
+          "maxScore": 60,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802406",
+          "category": "Numeric",
+          "name": "Week 1 Attendance & Participation",
+          "score": 2,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802407",
+          "category": "Numeric",
+          "name": "Week 2 Attendance & Participation",
+          "score": 2,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802408",
+          "category": "Numeric",
+          "name": "Week 3 Attendance & Participation ",
+          "score": 1,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802409",
+          "category": "Numeric",
+          "name": "Week 4 Attendance & Participation",
+          "score": 1,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802410",
+          "category": "Numeric",
+          "name": "Week 5 Attendance & Participation ",
+          "score": 1,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802411",
+          "category": "Numeric",
+          "name": "Week 6 Attendance & Participation ",
+          "score": 4,
+          "maxScore": 4,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802412",
+          "category": "Numeric",
+          "name": "Week 7 Attendance & Participation",
+          "score": 1,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802413",
+          "category": "Numeric",
+          "name": "Week 8 Attendance & Participation ",
+          "score": 2,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802414",
+          "category": "Numeric",
+          "name": "Week 1 Application Exercises",
+          "score": 1,
+          "maxScore": 1,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802415",
+          "category": "Numeric",
+          "name": "What is Organizational Behavior?",
+          "score": 1,
+          "maxScore": 1,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802416",
+          "category": "Numeric",
+          "name": "Human Resource Management",
+          "score": 2,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802417",
+          "category": "Numeric",
+          "name": "Organizational Structure",
+          "score": 1,
+          "maxScore": 1,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802418",
+          "category": "Numeric",
+          "name": "Leadership: Styles and Behaviors",
+          "score": 1,
+          "maxScore": 1,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802419",
+          "category": "Numeric",
+          "name": "Week 9 Attendance & Participation",
+          "score": 2,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-802420",
+          "category": "Numeric",
+          "name": "Week 10 Attendance & Participation ",
+          "score": 2,
+          "maxScore": 2,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-831795",
+          "category": "Numeric",
+          "name": "Peer Evaluation 1",
+          "score": 20,
+          "maxScore": 20,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-831798",
+          "category": "Numeric",
+          "name": "Power, Influence and Political Behavior",
+          "score": 1,
+          "maxScore": 1,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-managing-bs-834103",
+          "category": "Numeric",
+          "name": "CBA Advantage Event #1 ",
+          "score": 20,
+          "maxScore": 20,
+          "date": "2026-03-27"
+        }
       ]
     },
     "philosophy": {
       "weights": {
-        "Quizzes": { "weight": 0.60 },
-        "Republic Position Paper": { "weight": 0.20 },
-        "Final Exam": { "weight": 0.20 }
+        "Quizzes": {
+          "weight": 0.6,
+          "points": 10
+        },
+        "Paper": {
+          "weight": 0.2,
+          "points": 10
+        },
+        "Final Exam ": {
+          "weight": 0.2,
+          "points": 10
+        }
       },
       "grades": [
-        { "id": "grade-phil-q1", "category": "Quizzes", "name": "January 21 Quiz", "score": 83.33, "maxScore": 100, "date": "2026-01-21" },
-        { "id": "grade-phil-q2", "category": "Quizzes", "name": "January 28 Quiz", "score": 80, "maxScore": 100, "date": "2026-01-28" },
-        { "id": "grade-phil-q3", "category": "Quizzes", "name": "February 2 Quiz", "score": 100, "maxScore": 100, "date": "2026-02-02" },
-        { "id": "grade-phil-q4", "category": "Quizzes", "name": "February 4 Quiz", "score": 100, "maxScore": 100, "date": "2026-02-04" },
-        { "id": "grade-phil-q5", "category": "Quizzes", "name": "February 10 Quiz", "score": 90, "maxScore": 100, "date": "2026-02-10" },
-        { "id": "grade-phil-q6", "category": "Quizzes", "name": "February 12 Quiz", "score": 100, "maxScore": 100, "date": "2026-02-12" },
-        { "id": "grade-phil-q7", "category": "Quizzes", "name": "February 18 Quiz", "score": 90, "maxScore": 100, "date": "2026-02-18" },
-        { "id": "grade-phil-q8", "category": "Quizzes", "name": "February 25 Quiz", "score": 100, "maxScore": 100, "date": "2026-02-25" },
-        { "id": "grade-phil-q9", "category": "Quizzes", "name": "Cave Allegory 1", "score": 100, "maxScore": 100, "date": "2026-03-04" },
-        { "id": "grade-phil-q10", "category": "Quizzes", "name": "Cave Allegory 2", "score": 100, "maxScore": 100, "date": "2026-03-06" }
+        {
+          "id": "grade-philosophy-bs-812437",
+          "category": "Numeric",
+          "name": "January 21 Quiz",
+          "score": 83.33,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812438",
+          "category": "Numeric",
+          "name": "January 28 Quiz",
+          "score": 80,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812439",
+          "category": "Numeric",
+          "name": "February 2 Quiz ",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812440",
+          "category": "Numeric",
+          "name": "February 4 Quiz ",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812441",
+          "category": "Numeric",
+          "name": "February 10 Quiz",
+          "score": 90,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812442",
+          "category": "Numeric",
+          "name": "February 12 Quiz ",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812443",
+          "category": "Numeric",
+          "name": "February 18 Quiz ",
+          "score": 90,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812444",
+          "category": "Numeric",
+          "name": "February 25 Quiz",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812445",
+          "category": "Numeric",
+          "name": "Cave Allegory 1",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812446",
+          "category": "Numeric",
+          "name": "Cave Allegory 2",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-philosophy-bs-812447",
+          "category": "Numeric",
+          "name": "March 18 Quiz",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        }
       ]
     },
     "marketing": {
       "weights": {
-        "Mid-Term Exam": { "weight": 0.25 },
-        "Final Exam": { "weight": 0.30 },
-        "Case Studies": { "weight": 0.10 },
-        "App Project": { "weight": 0.15 },
-        "Pitch Vantage": { "weight": 0.05 },
-        "Participation": { "weight": 0.15 }
+        "Case Studies 1-6": {
+          "weight": 0.1,
+          "points": 10
+        },
+        "Group Project Final ": {
+          "weight": 0.15,
+          "points": 10
+        },
+        "Oral Individual Check-ins": {
+          "weight": 0.05,
+          "points": 10
+        },
+        "Class Participation": {
+          "weight": 0.15,
+          "points": 10
+        },
+        "Midterm": {
+          "weight": 0.25,
+          "points": 10
+        },
+        "Final Exam": {
+          "weight": 0.3,
+          "points": 10
+        }
       },
       "grades": [
-        { "id": "grade-mktg-cs1", "category": "Case Studies", "name": "Case Study 1 Ethics Harmonix", "score": 10, "maxScore": 10, "date": "2026-01-28" },
-        { "id": "grade-mktg-cs2", "category": "Case Studies", "name": "Disney", "score": 10, "maxScore": 10, "date": "2026-02-04" },
-        { "id": "grade-mktg-cs3", "category": "Case Studies", "name": "Camelbak", "score": 10, "maxScore": 10, "date": "2026-02-11" },
-        { "id": "grade-mktg-cs4", "category": "Case Studies", "name": "Starbucks: Coffee in the land of Tea", "score": 10, "maxScore": 10, "date": "2026-02-18" },
-        { "id": "grade-mktg-checkin1", "category": "Participation", "name": "Targ Mkt Oral Check-in", "score": 10, "maxScore": 10, "date": "2026-02-25" },
-        { "id": "grade-mktg-midterm", "category": "Mid-Term Exam", "name": "BCOR 3510 Mid term exam", "score": 49, "maxScore": 55, "date": "2026-03-10" }
+        {
+          "id": "grade-marketing-bs-826048",
+          "category": "Numeric",
+          "name": "Case Study 1 Ethics Harmonix",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-826049",
+          "category": "Numeric",
+          "name": "Disney",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-826050",
+          "category": "Numeric",
+          "name": "Camelbak",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-826051",
+          "category": "Numeric",
+          "name": "Starbucks: Coffee in the land of Tea ",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-826057",
+          "category": "Numeric",
+          "name": "Targ Mkt Oral Check-in",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-826058",
+          "category": "Numeric",
+          "name": "BCOR 3510 Mid term exam ",
+          "score": 49,
+          "maxScore": 55,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-833577",
+          "category": "Numeric",
+          "name": "Case Study 5: PepsiCo ",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-marketing-bs-836095",
+          "category": "Numeric",
+          "name": "Case Study 6 - Uber Technologies ",
+          "score": 10,
+          "maxScore": 10,
+          "date": "2026-03-27"
+        }
       ]
     },
     "accounting": {
       "weights": {
-        "Midterm 1": { "weight": 0.25, "points": 250 },
-        "Midterm 2": { "weight": 0.25, "points": 250 },
-        "Final Exam": { "weight": 0.25, "points": 250 },
-        "Homework": { "weight": 0.10, "points": 100 },
-        "Discussion Questions": { "weight": 0.05, "points": 50 },
-        "Classwork": { "weight": 0.05, "points": 50 },
-        "Group Project": { "weight": 0.05, "points": 50 }
+        "Midterm 1": {
+          "weight": 0.25,
+          "points": 250
+        },
+        "Midterm 2": {
+          "weight": 0.25,
+          "points": 250
+        },
+        "Final Exam": {
+          "weight": 0.25,
+          "points": 250
+        },
+        "Homework": {
+          "weight": 0.1,
+          "points": 100
+        },
+        "Discussion Questions": {
+          "weight": 0.05,
+          "points": 50
+        },
+        "Classwork": {
+          "weight": 0.05,
+          "points": 50
+        },
+        "Group Project": {
+          "weight": 0.05,
+          "points": 50
+        }
       },
       "grades": [
-        { "id": "grade-acct-hw1", "category": "Homework", "name": "CH 01 HW", "score": 100, "maxScore": 100, "date": "2026-01-20" },
-        { "id": "grade-acct-hw2", "category": "Homework", "name": "CH 02 HW", "score": 100, "maxScore": 100, "date": "2026-01-27" },
-        { "id": "grade-acct-hw3", "category": "Homework", "name": "CH 03 HW", "score": 95.5, "maxScore": 100, "date": "2026-02-03" },
-        { "id": "grade-acct-hw5", "category": "Homework", "name": "CH 05 HW", "score": 100, "maxScore": 100, "date": "2026-02-17" },
-        { "id": "grade-acct-hw6", "category": "Homework", "name": "CH 06 HW", "score": 100, "maxScore": 100, "date": "2026-02-24" },
-        { "id": "grade-acct-hw8", "category": "Homework", "name": "CH 08 HW", "score": 10, "maxScore": 100, "date": "2026-03-10" },
-        { "id": "grade-acct-cw1", "category": "Classwork", "name": "CH 1 Class Assignment", "score": 100, "maxScore": 100, "date": "2026-01-16" },
-        { "id": "grade-acct-cw2", "category": "Classwork", "name": "CH 2 Class Assignment", "score": 100, "maxScore": 100, "date": "2026-01-23" },
-        { "id": "grade-acct-cw3", "category": "Classwork", "name": "CH 3 Class Assignment", "score": 0, "maxScore": 100, "date": "2026-01-30" },
-        { "id": "grade-acct-cw5", "category": "Classwork", "name": "CH 5 Class Assignment", "score": 100, "maxScore": 100, "date": "2026-02-20" },
-        { "id": "grade-acct-cw6", "category": "Classwork", "name": "CH 6 Class Assignment", "score": 100, "maxScore": 100, "date": "2026-02-27" },
-        { "id": "grade-acct-cw8", "category": "Classwork", "name": "CH 8 Class Assignment", "score": 100, "maxScore": 100, "date": "2026-03-12" },
-        { "id": "grade-acct-mid1", "category": "Midterm 1", "name": "Midterm 1", "score": 96, "maxScore": 100, "date": "2026-02-26" }
+        {
+          "id": "grade-accounting-bs-803862",
+          "category": "Numeric",
+          "name": "CH 01 HW",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803863",
+          "category": "Numeric",
+          "name": "CH 02 HW",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803864",
+          "category": "Numeric",
+          "name": "CH 03 HW",
+          "score": 95.5,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803866",
+          "category": "Numeric",
+          "name": "CH 05 HW",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803867",
+          "category": "Numeric",
+          "name": "CH 06 HW",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803869",
+          "category": "Numeric",
+          "name": "CH 08 HW",
+          "score": 10,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803873",
+          "category": "Numeric",
+          "name": "CH 1 Class Assignment",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803874",
+          "category": "Numeric",
+          "name": "CH 2 Class Assignment",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803875",
+          "category": "Numeric",
+          "name": "CH 3 Class Assignment",
+          "score": 0,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803877",
+          "category": "Numeric",
+          "name": "CH 5 Class Assignment",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803878",
+          "category": "Numeric",
+          "name": "CH 6 Class Assignment",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803880",
+          "category": "Numeric",
+          "name": "CH 8 Class Assignment",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-803886",
+          "category": "Numeric",
+          "name": "Midterm 1",
+          "score": 96,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-828996",
+          "category": "Numeric",
+          "name": "Discussion Questions 1",
+          "score": 50,
+          "maxScore": 50,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-835432",
+          "category": "Numeric",
+          "name": "CH 09 HW",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-835433",
+          "category": "Numeric",
+          "name": "CH 9 Class Assignment",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-835434",
+          "category": "Numeric",
+          "name": "CH 10 HW",
+          "score": 100,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        },
+        {
+          "id": "grade-accounting-bs-835435",
+          "category": "Numeric",
+          "name": "CH 10 Class Assignment",
+          "score": 0,
+          "maxScore": 100,
+          "date": "2026-03-27"
+        }
       ]
     }
   }
