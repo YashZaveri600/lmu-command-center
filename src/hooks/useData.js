@@ -4,14 +4,19 @@ const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
   : '/api'
 
+const fetchOpts = { credentials: 'include' }
+
 export function useAPI(endpoint) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(() => {
-    fetch(`${API}/${endpoint}`)
-      .then(res => res.json())
-      .then(d => { setData(d); setLoading(false) })
+    fetch(`${API}/${endpoint}`, fetchOpts)
+      .then(res => {
+        if (res.status === 401) { setLoading(false); return null }
+        return res.json()
+      })
+      .then(d => { if (d !== null) setData(d); setLoading(false) })
       .catch(() => setLoading(false))
   }, [endpoint])
 
@@ -22,7 +27,7 @@ export function useAPI(endpoint) {
 
 export function useSSE(onMessage) {
   useEffect(() => {
-    const es = new EventSource(`${API}/events`)
+    const es = new EventSource(`${API}/events`, { withCredentials: true })
     es.onmessage = () => {}
     es.addEventListener('updates', e => onMessage('updates', JSON.parse(e.data)))
     es.addEventListener('todos', e => onMessage('todos', JSON.parse(e.data)))
@@ -41,6 +46,7 @@ export async function patchTodo(id, updates) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
+    credentials: 'include',
   }).then(r => r.json())
 }
 
@@ -49,19 +55,20 @@ export async function createTodo(todo) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(todo),
+    credentials: 'include',
   }).then(r => r.json())
 }
 
 export async function deleteTodo(id) {
-  return fetch(`${API}/todos/${id}`, { method: 'DELETE' }).then(r => r.json())
+  return fetch(`${API}/todos/${id}`, { method: 'DELETE', credentials: 'include' }).then(r => r.json())
 }
 
 export async function searchAll(query) {
-  return fetch(`${API}/search?q=${encodeURIComponent(query)}`).then(r => r.json())
+  return fetch(`${API}/search?q=${encodeURIComponent(query)}`, fetchOpts).then(r => r.json())
 }
 
 export async function syncFiles() {
-  return fetch(`${API}/sync-files`, { method: 'POST' }).then(r => r.json())
+  return fetch(`${API}/sync-files`, { method: 'POST', credentials: 'include' }).then(r => r.json())
 }
 
 export function getCourseInfo(courses, courseId) {

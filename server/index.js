@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import session from 'express-session'
+import connectPgSimple from 'connect-pg-simple'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -8,13 +10,147 @@ import db from './db/index.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.API_PORT || 3001
-
-// Until Phase 2 (Microsoft SSO), hardcode user ID 1 (Yash)
-const USER_ID = 1
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`
 
 const app = express()
-app.use(cors())
+app.use(cors({ origin: true, credentials: true }))
 app.use(express.json())
+
+// Trust Railway's proxy so secure cookies work
+app.set('trust proxy', 1)
+
+// --- Session middleware (backed by PostgreSQL) ---
+const PgSession = connectPgSimple(session)
+app.use(session({
+  store: new PgSession({ pool: db.pool, tableName: 'session' }),
+  secret: process.env.SESSION_SECRET || 'dev-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production' || APP_URL.startsWith('https'),
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    sameSite: 'lax',
+  },
+}))
+
+// --- Microsoft OAuth2 config ---
+const MS_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID
+const MS_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET
+const MS_REDIRECT_URI = `${APP_URL}/auth/microsoft/callback`
+const MS_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
+const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+const MS_SCOPES = 'openid profile email User.Read'
+
+// --- Auth routes ---
+
+// Start Microsoft login
+app.get('/auth/microsoft', (req, res) => {
+  const params = new URLSearchParams({
+    client_id: MS_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: MS_REDIRECT_URI,
+    scope: MS_SCOPES,
+    response_mode: 'query',
+    prompt: 'select_account',
+  })
+  res.redirect(`${MS_AUTH_URL}?${params}`)
+})
+
+// Microsoft callback — exchange code for tokens, create/find user
+app.get('/auth/microsoft/callback', async (req, res) => {
+  const { code, error } = req.query
+  if (error || !code) {
+    console.error('[auth] Microsoft login error:', error || 'no code')
+    return res.redirect('/?auth_error=1')
+  }
+
+  try {
+    // Exchange code for tokens
+    const tokenRes = await fetch(MS_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: MS_CLIENT_ID,
+        client_secret: MS_CLIENT_SECRET,
+        code,
+        redirect_uri: MS_REDIRECT_URI,
+        grant_type: 'authorization_code',
+        scope: MS_SCOPES,
+      }),
+    })
+
+    const tokens = await tokenRes.json()
+    if (tokens.error) {
+      console.error('[auth] Token exchange error:', tokens.error_description)
+      return res.redirect('/?auth_error=1')
+    }
+
+    // Get user profile from Microsoft Graph
+    const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    })
+    const profile = await profileRes.json()
+
+    // Find or create user in our database
+    const userId = await db.findOrCreateUser(
+      profile.id,
+      profile.mail || profile.userPrincipalName,
+      profile.displayName
+    )
+
+    // Save Microsoft tokens for later use (email sync, etc.)
+    await db.saveTokens(userId, 'microsoft', {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token || null,
+      expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+      scopes: MS_SCOPES,
+    })
+
+    // Set session
+    req.session.userId = userId
+    req.session.save(() => {
+      res.redirect('/')
+    })
+  } catch (e) {
+    console.error('[auth] Callback error:', e)
+    res.redirect('/?auth_error=1')
+  }
+})
+
+// Check current auth status
+app.get('/api/auth/me', async (req, res) => {
+  if (!req.session.userId) {
+    return res.json({ authenticated: false })
+  }
+  const user = await db.getUser(req.session.userId)
+  if (!user) {
+    return res.json({ authenticated: false })
+  }
+  res.json({ authenticated: true, user })
+})
+
+// Logout
+app.post('/auth/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.json({ ok: true })
+  })
+})
+
+// --- Auth middleware — protect all /api routes (except /api/auth/*) ---
+function requireAuth(req, res, next) {
+  if (req.path.startsWith('/api/auth/')) return next()
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' })
+  }
+  req.userId = req.session.userId
+  next()
+}
+
+app.use('/api', requireAuth)
+
+// Helper to get userId from request (uses session now instead of hardcoded)
+const getUserId = (req) => req.userId || req.session.userId
 
 // --- SSE for live updates ---
 const clients = []
@@ -41,63 +177,64 @@ app.get('/api/events', (req, res) => {
 
 // --- GET endpoints (all backed by PostgreSQL) ---
 app.get('/api/courses', async (req, res) => {
-  try { res.json(await db.getCourses(USER_ID)) }
+  try { res.json(await db.getCourses(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/grades', async (req, res) => {
-  try { res.json(await db.getGrades(USER_ID)) }
+  try { res.json(await db.getGrades(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/todos', async (req, res) => {
-  try { res.json(await db.getTodos(USER_ID)) }
+  try { res.json(await db.getTodos(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/updates', async (req, res) => {
-  try { res.json(await db.getUpdates(USER_ID)) }
+  try { res.json(await db.getUpdates(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/emails', async (req, res) => {
-  try { res.json(await db.getEmails(USER_ID)) }
+  try { res.json(await db.getEmails(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/notes', async (req, res) => {
-  try { res.json(await db.getNotes(USER_ID)) }
+  try { res.json(await db.getNotes(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/study-sessions', async (req, res) => {
-  try { res.json(await db.getStudySessions(USER_ID)) }
+  try { res.json(await db.getStudySessions(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/schedule', async (req, res) => {
-  try { res.json(await db.getSchedule(USER_ID)) }
+  try { res.json(await db.getSchedule(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/semester', async (req, res) => {
   try {
-    const data = await db.getSemester(USER_ID)
+    const data = await db.getSemester(getUserId(req))
     if (!data) return res.status(404).json({ error: 'Not found' })
     res.json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/automations', async (req, res) => {
-  try { res.json(await db.getAutomations(USER_ID)) }
+  try { res.json(await db.getAutomations(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // --- Todo CRUD ---
 app.post('/api/todos', async (req, res) => {
   try {
-    const newTodo = await db.addTodo(USER_ID, req.body)
-    const todos = await db.getTodos(USER_ID)
+    const uid = getUserId(req)
+    const newTodo = await db.addTodo(uid, req.body)
+    const todos = await db.getTodos(uid)
     broadcast('todos', todos)
     res.status(201).json(newTodo)
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -105,8 +242,9 @@ app.post('/api/todos', async (req, res) => {
 
 app.patch('/api/todos/:id', async (req, res) => {
   try {
-    await db.updateTodo(USER_ID, req.params.id, req.body)
-    const todos = await db.getTodos(USER_ID)
+    const uid = getUserId(req)
+    await db.updateTodo(uid, req.params.id, req.body)
+    const todos = await db.getTodos(uid)
     broadcast('todos', todos)
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -114,8 +252,9 @@ app.patch('/api/todos/:id', async (req, res) => {
 
 app.delete('/api/todos/:id', async (req, res) => {
   try {
-    await db.deleteTodo(USER_ID, req.params.id)
-    const todos = await db.getTodos(USER_ID)
+    const uid = getUserId(req)
+    await db.deleteTodo(uid, req.params.id)
+    const todos = await db.getTodos(uid)
     broadcast('todos', todos)
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -124,15 +263,16 @@ app.delete('/api/todos/:id', async (req, res) => {
 // --- Grades CRUD ---
 app.post('/api/grades', async (req, res) => {
   try {
+    const uid = getUserId(req)
     const { courseId, category, score, maxScore, name } = req.body
-    await db.addGrade(USER_ID, courseId, {
+    await db.addGrade(uid, courseId, {
       category,
       name: name || category,
       score,
       maxScore: maxScore || 100,
       date: new Date().toISOString().split('T')[0],
     })
-    const data = await db.getGrades(USER_ID)
+    const data = await db.getGrades(uid)
     broadcast('grades', data)
     res.status(201).json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -140,8 +280,9 @@ app.post('/api/grades', async (req, res) => {
 
 app.delete('/api/grades/:courseId/:gradeId', async (req, res) => {
   try {
-    await db.deleteGrade(USER_ID, req.params.courseId, req.params.gradeId)
-    const data = await db.getGrades(USER_ID)
+    const uid = getUserId(req)
+    await db.deleteGrade(uid, req.params.courseId, req.params.gradeId)
+    const data = await db.getGrades(uid)
     broadcast('grades', data)
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -150,8 +291,9 @@ app.delete('/api/grades/:courseId/:gradeId', async (req, res) => {
 // --- Notes CRUD ---
 app.post('/api/notes', async (req, res) => {
   try {
-    const note = await db.addNote(USER_ID, req.body)
-    const notes = await db.getNotes(USER_ID)
+    const uid = getUserId(req)
+    const note = await db.addNote(uid, req.body)
+    const notes = await db.getNotes(uid)
     broadcast('notes', notes)
     res.status(201).json(note)
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -159,8 +301,9 @@ app.post('/api/notes', async (req, res) => {
 
 app.delete('/api/notes/:id', async (req, res) => {
   try {
-    await db.deleteNote(USER_ID, req.params.id)
-    const notes = await db.getNotes(USER_ID)
+    const uid = getUserId(req)
+    await db.deleteNote(uid, req.params.id)
+    const notes = await db.getNotes(uid)
     broadcast('notes', notes)
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -169,7 +312,8 @@ app.delete('/api/notes/:id', async (req, res) => {
 // --- Study sessions ---
 app.post('/api/study-sessions', async (req, res) => {
   try {
-    const data = await db.addStudySession(USER_ID, req.body)
+    const uid = getUserId(req)
+    const data = await db.addStudySession(uid, req.body)
     broadcast('study-sessions', data)
     res.status(201).json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -178,12 +322,13 @@ app.post('/api/study-sessions', async (req, res) => {
 // --- Webhook endpoints (still supported for backward compat with sync script) ---
 app.post('/api/webhook/grades', async (req, res) => {
   try {
+    const uid = getUserId(req)
     const data = req.body
     if (!data?.courses) return res.status(400).json({ error: 'Expected grades object with courses' })
     for (const [courseId, courseData] of Object.entries(data.courses)) {
-      await db.upsertGrades(USER_ID, courseId, courseData)
+      await db.upsertGrades(uid, courseId, courseData)
     }
-    const grades = await db.getGrades(USER_ID)
+    const grades = await db.getGrades(uid)
     broadcast('grades', grades)
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -191,10 +336,11 @@ app.post('/api/webhook/grades', async (req, res) => {
 
 app.post('/api/webhook/updates', async (req, res) => {
   try {
+    const uid = getUserId(req)
     const updates = req.body
     if (!Array.isArray(updates)) return res.status(400).json({ error: 'Expected an array' })
-    await db.upsertUpdates(USER_ID, updates)
-    const data = await db.getUpdates(USER_ID)
+    await db.upsertUpdates(uid, updates)
+    const data = await db.getUpdates(uid)
     broadcast('updates', data)
     res.json({ ok: true, count: updates.length })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -202,10 +348,11 @@ app.post('/api/webhook/updates', async (req, res) => {
 
 app.post('/api/webhook/emails', async (req, res) => {
   try {
+    const uid = getUserId(req)
     const emails = req.body
     if (!Array.isArray(emails)) return res.status(400).json({ error: 'Expected an array' })
-    await db.upsertEmails(USER_ID, emails)
-    const data = await db.getEmails(USER_ID)
+    await db.upsertEmails(uid, emails)
+    const data = await db.getEmails(uid)
     broadcast('emails', data)
     res.json({ ok: true, count: emails.length })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -213,13 +360,13 @@ app.post('/api/webhook/emails', async (req, res) => {
 
 app.post('/api/webhook/todos', async (req, res) => {
   try {
+    const uid = getUserId(req)
     const todos = req.body
     if (!Array.isArray(todos)) return res.status(400).json({ error: 'Expected an array' })
-    // Clear and re-insert
     for (const t of todos) {
-      await db.addTodo(USER_ID, { course: t.course, task: t.task || t.title, due: t.due, done: t.done, priority: t.priority })
+      await db.addTodo(uid, { course: t.course, task: t.task || t.title, due: t.due, done: t.done, priority: t.priority })
     }
-    const data = await db.getTodos(USER_ID)
+    const data = await db.getTodos(uid)
     broadcast('todos', data)
     res.json({ ok: true, count: todos.length })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -227,10 +374,11 @@ app.post('/api/webhook/todos', async (req, res) => {
 
 app.post('/api/webhook/automations', async (req, res) => {
   try {
+    const uid = getUserId(req)
     const automations = req.body
     if (!Array.isArray(automations)) return res.status(400).json({ error: 'Expected an array' })
-    await db.upsertAutomations(USER_ID, automations)
-    const data = await db.getAutomations(USER_ID)
+    await db.upsertAutomations(uid, automations)
+    const data = await db.getAutomations(uid)
     broadcast('automations', data)
     res.json({ ok: true, count: automations.length })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -241,16 +389,17 @@ app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q || ''
     if (!query) return res.json({ updates: [], todos: [], emails: [] })
-    res.json(await db.search(USER_ID, query))
+    res.json(await db.search(getUserId(req), query))
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // --- Export weekly summary ---
 app.get('/api/export-summary', async (req, res) => {
   try {
-    const updates = await db.getUpdates(USER_ID)
-    const todos = await db.getTodos(USER_ID)
-    const courses = await db.getCourses(USER_ID)
+    const uid = getUserId(req)
+    const updates = await db.getUpdates(uid)
+    const todos = await db.getTodos(uid)
+    const courses = await db.getCourses(uid)
 
     const getCourse = (id) => courses.find(c => c.id === id)?.name || id
     const today = new Date()
@@ -263,7 +412,7 @@ app.get('/api/export-summary', async (req, res) => {
     const upcoming = updates.filter(u => u.type === 'assignment' && u.date <= weekEndStr && u.date >= todayStr)
     const pendingTodos = todos.filter(t => !t.done)
 
-    let summary = `LMU COMMAND CENTER — WEEKLY SUMMARY\n`
+    let summary = `EDUSYNC — WEEKLY SUMMARY\n`
     summary += `${today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}\n`
     summary += `${'='.repeat(50)}\n\n`
 
@@ -295,5 +444,5 @@ if (fs.existsSync(distPath)) {
 
 const port = process.env.PORT || PORT
 app.listen(port, () => {
-  console.log(`\n  Server running at http://localhost:${port}`)
+  console.log(`\n  EduSync server running at http://localhost:${port}`)
 })

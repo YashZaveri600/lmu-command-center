@@ -1,5 +1,5 @@
 import React from 'react'
-import { LayoutDashboard, Sunrise, Bell, CheckSquare, Mail, Calendar, CalendarDays, FolderOpen, Zap, Target, GraduationCap, StickyNote, Timer, Moon, Sun, Flame } from 'lucide-react'
+import { LayoutDashboard, Sunrise, Bell, CheckSquare, Mail, Calendar, CalendarDays, FolderOpen, Zap, Target, GraduationCap, StickyNote, Timer, Moon, Sun, Flame, LogOut } from 'lucide-react'
 
 const navItems = [
   { id: 'briefing', label: 'Daily Briefing', icon: Sunrise },
@@ -17,11 +17,11 @@ const navItems = [
   { id: 'automations', label: 'Automations', icon: Zap },
 ]
 
-export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress }) {
+export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress, user, onLogout }) {
   return (
     <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0">
       <div className="p-5 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white">LMU Command Center</h1>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white">EduSync</h1>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Spring 2026</p>
         {semesterProgress != null && (
           <div className="mt-2">
@@ -76,6 +76,20 @@ export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCo
           {dark ? <Sun size={16} /> : <Moon size={16} />}
           {dark ? 'Light Mode' : 'Dark Mode'}
         </button>
+
+        {user && (
+          <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{user.displayName}</div>
+            <div className="text-xs text-gray-400 truncate mb-2">{user.email}</div>
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            >
+              <LogOut size={14} />
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   )
