@@ -421,12 +421,13 @@ app.post('/api/sync', async (req, res) => {
 app.get('/api/ai/briefing', async (req, res) => {
   try {
     const uid = getUserId(req)
-    const [courses, grades, todos, updates] = await Promise.all([
+    const [courses, gradesData, todos, updates] = await Promise.all([
       db.getCourses(uid),
       db.getGrades(uid),
       db.getTodos(uid),
       db.getUpdates(uid),
     ])
+    const grades = Object.entries(gradesData?.courses || {}).map(([id, data]) => ({ course: id, ...data }))
     const briefing = await generateDailyBriefing({ courses, grades, todos, announcements: updates })
     if (!briefing) return res.json({ ok: false, error: 'AI not configured. Add ANTHROPIC_API_KEY to enable.' })
     res.json({ ok: true, briefing })
@@ -440,8 +441,8 @@ app.post('/api/ai/grade-calc', async (req, res) => {
   try {
     const uid = getUserId(req)
     const { courseId, targetGrade } = req.body
-    const grades = await db.getGrades(uid)
-    const courseData = grades.find(g => g.course === courseId)
+    const gradesData = await db.getGrades(uid)
+    const courseData = gradesData?.courses?.[courseId]
     if (!courseData) return res.json({ ok: false, error: 'Course not found' })
 
     const courses = await db.getCourses(uid)
@@ -471,12 +472,17 @@ app.post('/api/ai/chat', async (req, res) => {
     if (!API_KEY) return res.json({ ok: false, error: 'AI not configured. Add ANTHROPIC_API_KEY to enable.' })
 
     // Gather all student data for context
-    const [courses, grades, todos, updates] = await Promise.all([
+    const [courses, gradesData, todos, updates] = await Promise.all([
       db.getCourses(uid),
       db.getGrades(uid),
       db.getTodos(uid),
       db.getUpdates(uid),
     ])
+
+    // getGrades returns { courses: { courseId: { weights, grades } } }
+    const gradesList = Object.entries(gradesData?.courses || {}).map(([id, data]) => ({
+      course: id, ...data
+    }))
 
     const today = new Date().toISOString().split('T')[0]
     const pendingTasks = (todos || []).filter(t => !t.done)
@@ -487,10 +493,10 @@ app.post('/api/ai/chat', async (req, res) => {
 COURSES: ${(courses || []).map(c => `${c.shortCode} - ${c.name}`).join(', ')}
 
 PENDING TASKS (${pendingTasks.length}):
-${pendingTasks.map(t => `- [${t.course}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' ⚠️ OVERDUE' : ''}`).join('\n') || 'None'}
+${pendingTasks.map(t => `- [${t.course}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' OVERDUE' : ''}`).join('\n') || 'None'}
 
 GRADES:
-${(grades || []).map(g => {
+${gradesList.map(g => {
   if (!g.grades?.length) return `${g.course}: No grades yet`
   const avg = g.grades.reduce((s, gr) => s + (gr.score / gr.maxScore) * 100, 0) / g.grades.length
   return `${g.course} (${avg.toFixed(1)}% avg): ${g.grades.map(gr => `${gr.name} ${gr.score}/${gr.maxScore}`).join(', ')}`
