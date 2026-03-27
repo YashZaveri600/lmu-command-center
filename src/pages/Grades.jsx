@@ -151,57 +151,75 @@ export default function Grades({ grades, courses, setGrades }) {
       )}
 
       {/* Grade Trend Chart */}
-      {Object.keys(allGrades).some(cId => (allGrades[cId] || []).length > 1) && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={18} className="text-blue-500" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">Grade Trends</h3>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart>
-              <XAxis
-                dataKey="date"
-                type="category"
-                allowDuplicatedCategory={false}
-                tick={{ fontSize: 11 }}
-                stroke="#9CA3AF"
-              />
-              <YAxis domain={[50, 100]} tick={{ fontSize: 11 }} stroke="#9CA3AF" unit="%" />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
-                formatter={(value) => [`${value.toFixed(1)}%`]}
-              />
-              <Legend />
-              {Object.entries(allGrades).map(([cId, cGrades], idx) => {
-                if (!cGrades || cGrades.length < 2) return null
-                // Build running average data points sorted by date
-                const sorted = [...cGrades].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-                let runningTotal = 0
-                const data = sorted.map((g, i) => {
-                  runningTotal += (g.score / g.maxScore) * 100
-                  return {
-                    date: g.date ? new Date(g.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `#${i+1}`,
-                    value: Number((runningTotal / (i + 1)).toFixed(1))
-                  }
-                })
-                const courseName = getCourseInfo(courses, cId).shortCode || cId
-                return (
+      {Object.keys(allGrades).some(cId => (allGrades[cId] || []).length > 1) && (() => {
+        // Build unified timeline: collect all dates, compute running avg per course at each date
+        const courseIds = Object.keys(allGrades).filter(cId => (allGrades[cId] || []).length > 1)
+        const allDates = new Set()
+        const courseData = {}
+
+        courseIds.forEach(cId => {
+          const sorted = [...(allGrades[cId] || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+          let runningTotal = 0
+          courseData[cId] = {}
+          sorted.forEach((g, i) => {
+            const date = g.date || `1970-01-${String(i + 1).padStart(2, '0')}`
+            allDates.add(date)
+            runningTotal += (g.score / g.maxScore) * 100
+            courseData[cId][date] = Number((runningTotal / (i + 1)).toFixed(1))
+          })
+        })
+
+        // Sort dates chronologically and build chart data
+        const sortedDates = [...allDates].sort()
+        const chartData = sortedDates.map(date => {
+          const point = { date: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }
+          courseIds.forEach(cId => {
+            // Carry forward the last known value
+            point[cId] = courseData[cId][date] || null
+          })
+          return point
+        })
+
+        // Fill forward: if a course has no value on a date, use its last known value
+        courseIds.forEach(cId => {
+          let last = null
+          chartData.forEach(point => {
+            if (point[cId] !== null) last = point[cId]
+            else if (last !== null) point[cId] = last
+          })
+        })
+
+        return (
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={18} className="text-blue-500" />
+              <h3 className="font-semibold text-gray-900 dark:text-white">Grade Trends</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
+                <YAxis domain={[50, 100]} tick={{ fontSize: 11 }} stroke="#9CA3AF" unit="%" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                  formatter={(value) => [`${value.toFixed(1)}%`]}
+                />
+                <Legend />
+                {courseIds.map((cId, idx) => (
                   <Line
                     key={cId}
-                    data={data}
-                    dataKey="value"
-                    name={courseName}
+                    dataKey={cId}
+                    name={getCourseInfo(courses, cId).shortCode || cId}
                     stroke={CHART_COLORS[idx % CHART_COLORS.length]}
                     strokeWidth={2}
                     dot={{ r: 3 }}
                     connectNulls
                   />
-                )
-              })}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      })()}
 
       {/* What-If Calculator */}
       <WhatIfCalculator grades={grades} courses={courses} />
