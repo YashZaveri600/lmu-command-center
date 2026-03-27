@@ -121,10 +121,21 @@ export async function fetchEnrollments(cookie) {
       // Only include courses from the current semester
       return name.toLowerCase().includes(currentSemester.toLowerCase())
     })
-    // Deduplicate by name (some courses have multiple sections with same name)
+    // Deduplicate by cleaned name (some courses have multiple sections like PHIL-1800-18 and PHIL-1800-18/20)
     .filter((item, idx, arr) => {
-      const name = item.OrgUnit.Name
-      return idx === arr.findIndex(i => i.OrgUnit.Name === name)
+      const cleanName = item.OrgUnit.Name
+        .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
+        .replace(/\s*\([^)]+\)\s*$/, '')
+        .trim()
+        .toLowerCase()
+      return idx === arr.findIndex(i => {
+        const otherClean = i.OrgUnit.Name
+          .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
+          .replace(/\s*\([^)]+\)\s*$/, '')
+          .trim()
+          .toLowerCase()
+        return otherClean === cleanName
+      })
     })
     .map(item => ({
       brightspaceId: item.OrgUnit.Id,
@@ -138,22 +149,17 @@ export async function fetchEnrollments(cookie) {
 
 // ─── Get grades for a course ───
 export async function fetchGrades(courseId, cookie) {
-  try {
-    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/grades/values/myGradeValues/`, cookie)
-    return (data || []).map(g => ({
-      id: g.GradeObjectIdentifier,
-      name: g.GradeObjectName,
-      type: g.GradeObjectTypeName,
-      points: g.PointsNumerator,
-      maxPoints: g.PointsDenominator,
-      weight: g.WeightedNumerator,
-      maxWeight: g.WeightedDenominator,
-      date: g.LastModified || null,
-    }))
-  } catch (e) {
-    console.error(`[brightspace] Failed to fetch grades for course ${courseId}:`, e.message)
-    return []
-  }
+  const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/grades/values/myGradeValues/`, cookie)
+  return (data || []).map(g => ({
+    id: g.GradeObjectIdentifier,
+    name: g.GradeObjectName,
+    type: g.GradeObjectTypeName,
+    points: g.PointsNumerator,
+    maxPoints: g.PointsDenominator,
+    weight: g.WeightedNumerator,
+    maxWeight: g.WeightedDenominator,
+    date: g.LastModified || null,
+  }))
 }
 
 // ─── Get grade categories/weights for a course ───

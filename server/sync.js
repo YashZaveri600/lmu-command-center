@@ -8,14 +8,6 @@
 import brightspace from './brightspace.js'
 import db from './db/index.js'
 
-// ─── Known Brightspace course IDs (fallback when enrollment API fails) ───
-const KNOWN_BRIGHTSPACE_IDS = {
-  managing: 295178,
-  accounting: 295318,
-  philosophy: 296996,
-  marketing: 299689,
-}
-
 // ─── Course mapping ───
 // Maps Brightspace course IDs to our short app IDs
 // For new users, this is auto-detected from enrollment data + course names
@@ -190,10 +182,19 @@ export async function syncUserData(userId, cookie) {
             date: g.date ? new Date(g.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           }))
 
-        // Upsert grades for this course
-        await db.upsertGrades(userId, appId, { weights, grades: mappedGrades })
-        results.grades += mappedGrades.length
-        console.log(`[sync] ${appId}: ${mappedGrades.length} grades, ${Object.keys(weights).length} categories`)
+        // Only upsert grades if we actually got some — don't wipe existing data
+        // when the API returns 403 or empty results for a duplicate course entry
+        if (mappedGrades.length > 0 || grades.length === 0) {
+          await db.upsertGrades(userId, appId, { weights, grades: mappedGrades })
+          results.grades += mappedGrades.length
+          console.log(`[sync] ${appId}: ${mappedGrades.length} grades, ${Object.keys(weights).length} categories`)
+        } else {
+          // API returned grades but all were filtered out (summary rows only) — still update weights
+          console.log(`[sync] ${appId}: skipping grade upsert (${grades.length} raw grades all filtered out, preserving existing)`)
+          if (Object.keys(weights).length > 0) {
+            await db.upsertGrades(userId, appId, { weights, grades: [] })
+          }
+        }
 
       } catch (e) {
         console.error(`[sync] Error syncing grades for ${appId}:`, e.message)
