@@ -91,7 +91,9 @@ const NAME_CATEGORY_RULES = {
 }
 
 function inferCategory(appId, gradeName, apiCategory) {
-  if (apiCategory && apiCategory !== 'Uncategorized' && apiCategory !== 'Numeric') {
+  // These are Brightspace grade TYPE names, not actual categories — skip them
+  const IGNORE_TYPES = ['Uncategorized', 'Numeric', 'Pass/Fail', 'Category', 'Text', 'Formula', 'Calculated', 'Final Calculated Grade', 'Final Adjusted Grade']
+  if (apiCategory && !IGNORE_TYPES.includes(apiCategory)) {
     return apiCategory
   }
   const rules = NAME_CATEGORY_RULES[appId]
@@ -175,8 +177,10 @@ export async function syncUserData(userId, cookie) {
         categories.forEach(cat => { categoryMap[cat.id] = cat.name })
 
         // Map grades with smart category inference
+        // Filter out summary rows and invalid grades
+        const SKIP_TYPES = ['Final Calculated Grade', 'Final Adjusted Grade', 'Category']
         const mappedGrades = grades
-          .filter(g => g.maxPoints > 0 && g.points !== null)
+          .filter(g => g.maxPoints > 0 && g.points !== null && !SKIP_TYPES.includes(g.type))
           .map(g => ({
             id: `grade-${appId}-bs-${g.id}`,
             category: inferCategory(appId, g.name, categoryMap[g.categoryId] || g.type),
