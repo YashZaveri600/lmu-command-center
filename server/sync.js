@@ -381,6 +381,27 @@ export async function syncUserData(userId, cookie) {
       }
     }
 
+    // Clean up announcements from non-current courses (leftover from old syncs)
+    try {
+      const validCourseIds = activeCourses.map((_, idx) => {
+        const enrollment = activeCourses[idx]
+        const cleanName = enrollment.name
+          .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
+          .replace(/\s*\([A-Z]{2,4}-[^)]+\)\s*$/, '')
+          .trim()
+        return generateAppId(cleanName, enrollment.code).appId
+      })
+      const existing = await db.getUpdates(userId)
+      const validSet = new Set(validCourseIds)
+      const cleaned = existing.filter(u => validSet.has(u.course))
+      if (cleaned.length < existing.length) {
+        await db.upsertUpdates(userId, cleaned)
+        console.log(`[sync] Cleaned ${existing.length - cleaned.length} announcements from old courses`)
+      }
+    } catch (e) {
+      console.log('[sync] Announcement cleanup note:', e.message)
+    }
+
     // Clean up old COMPLETED synced todos (keep overdue ones visible)
     try {
       await db.pool.query(

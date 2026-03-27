@@ -9,7 +9,9 @@ export default function Updates({ updates, courses }) {
 
   if (!updates || !courses) return null
 
-  let filtered = updates
+  // Only show announcements from current courses (filter out old/junk course IDs)
+  const courseIds = new Set(courses.map(c => c.id))
+  let filtered = updates.filter(u => courseIds.has(u.course))
   if (filter !== 'all') filtered = filtered.filter(u => u.urgency === filter)
   if (courseFilter !== 'all') filtered = filtered.filter(u => u.course === courseFilter)
 
@@ -44,7 +46,7 @@ export default function Updates({ updates, courses }) {
         >
           <option value="all">All Courses</option>
           {courses.map(c => (
-            <option key={c.id} value={c.id}>{c.shortCode}</option>
+            <option key={c.id} value={c.id}>{c.name || c.shortCode}</option>
           ))}
         </select>
       </div>
