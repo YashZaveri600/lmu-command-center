@@ -8,6 +8,14 @@
 import brightspace from './brightspace.js'
 import db from './db/index.js'
 
+// ─── Known Brightspace course IDs (fallback when enrollment API fails) ───
+const KNOWN_BRIGHTSPACE_IDS = {
+  managing: 295178,
+  accounting: 295318,
+  philosophy: 296996,
+  marketing: 299689,
+}
+
 // ─── Course mapping ───
 // Maps Brightspace course IDs to our short app IDs
 // For new users, this is auto-detected from enrollment data + course names
@@ -100,18 +108,21 @@ export async function syncUserData(userId, cookie) {
   const results = { courses: 0, grades: 0, announcements: 0, errors: [] }
 
   try {
-    // 1. Fetch enrollments
+    // 1. Fetch enrollments from Brightspace API
     console.log(`[sync] Starting sync for user ${userId}...`)
     const enrollments = await brightspace.fetchEnrollments(cookie)
     console.log(`[sync] Found ${enrollments.length} enrolled courses`)
 
     // Filter to likely current-semester courses (skip old/inactive)
-    // For now, use all courses — can filter by semester later
     const activeCourses = enrollments.filter(e => {
-      // Skip obviously non-course items
       const name = e.name.toLowerCase()
       return !name.includes('sandbox') && !name.includes('test') && !name.includes('template')
     })
+
+    if (activeCourses.length === 0) {
+      results.errors.push('No courses found from Brightspace. Your session may have expired — try reconnecting.')
+      return results
+    }
 
     // 2. Sync each course
     for (const enrollment of activeCourses) {

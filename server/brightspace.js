@@ -50,46 +50,64 @@ async function bsFetch(path, cookie) {
 
 // ─── Get enrolled courses ───
 export async function fetchEnrollments(cookie) {
-  // Try multiple API versions and pagination
-  let allItems = []
-  let bookmark = null
-  let attempts = 0
+  // Try multiple API versions until one works
+  const apiVersions = ['1.47', '1.28', '1.0']
+  let data = null
+  let usedVersion = null
 
-  do {
-    const url = bookmark
-      ? `/d2l/api/lp/1.0/enrollments/myenrollments/?sortBy=name&bookmark=${bookmark}`
-      : '/d2l/api/lp/1.0/enrollments/myenrollments/?sortBy=name'
-
-    const data = await bsFetch(url, cookie)
-    console.log(`[brightspace] Enrollment response keys:`, Object.keys(data || {}))
-
-    const items = data.Items || data.items || []
-    console.log(`[brightspace] Got ${items.length} enrollment items (page ${attempts + 1})`)
-
-    if (items.length > 0) {
-      console.log(`[brightspace] Sample item keys:`, Object.keys(items[0]))
-      if (items[0].OrgUnit) console.log(`[brightspace] OrgUnit sample:`, JSON.stringify(items[0].OrgUnit).slice(0, 200))
+  for (const ver of apiVersions) {
+    try {
+      const url = `/d2l/api/lp/${ver}/enrollments/myenrollments/`
+      console.log(`[brightspace] Trying enrollment API version ${ver}...`)
+      data = await bsFetch(url, cookie)
+      usedVersion = ver
+      console.log(`[brightspace] Version ${ver} worked!`)
+      break
+    } catch (e) {
+      console.log(`[brightspace] Version ${ver} failed: ${e.message}`)
     }
+  }
 
-    allItems = allItems.concat(items)
+  if (!data) {
+    throw new Error('All enrollment API versions failed')
+  }
 
-    // Handle pagination
-    bookmark = data.PagingInfo?.HasMoreItems ? data.PagingInfo.Bookmark : null
-    attempts++
-  } while (bookmark && attempts < 10)
+  // Collect all items with pagination
+  let allItems = data.Items || data.items || []
+  console.log(`[brightspace] Got ${allItems.length} enrollment items (page 1), keys: ${Object.keys(data)}`)
+
+  if (allItems.length > 0) {
+    console.log(`[brightspace] Sample item:`, JSON.stringify(allItems[0]).slice(0, 300))
+  }
+
+  // Handle pagination
+  let bookmark = data.PagingInfo?.HasMoreItems ? data.PagingInfo.Bookmark : null
+  let attempts = 1
+
+  while (bookmark && attempts < 10) {
+    try {
+      const pageData = await bsFetch(`/d2l/api/lp/${usedVersion}/enrollments/myenrollments/?bookmark=${bookmark}`, cookie)
+      const pageItems = pageData.Items || pageData.items || []
+      allItems = allItems.concat(pageItems)
+      bookmark = pageData.PagingInfo?.HasMoreItems ? pageData.PagingInfo.Bookmark : null
+      attempts++
+      console.log(`[brightspace] Page ${attempts}: ${pageItems.length} items`)
+    } catch {
+      break
+    }
+  }
 
   console.log(`[brightspace] Total enrollment items: ${allItems.length}`)
 
-  // Filter to courses - be lenient with the type filter
+  // Filter to actual courses
   const courses = allItems
     .filter(item => {
       if (!item.OrgUnit) return false
-      // Accept Type.Id 3 (course offering) or any item with a course-like code
       const typeId = item.OrgUnit.Type?.Id
       const code = item.OrgUnit.Code || ''
       const name = item.OrgUnit.Name || ''
-      // Include if it's type 3, or has a course code pattern, or name contains course indicators
-      return typeId === 3 || /^[A-Z]{2,4}[.-]\d{4}/i.test(code) || /spring|fall|summer/i.test(name)
+      // Type 3 = course offering, or match course code patterns, or has semester in name
+      return typeId === 3 || /^[A-Z]{2,4}[.-]\d{3,4}/i.test(code) || /spring\s*20|fall\s*20|summer\s*20/i.test(name)
     })
     .map(item => ({
       brightspaceId: item.OrgUnit.Id,
@@ -97,7 +115,7 @@ export async function fetchEnrollments(cookie) {
       code: item.OrgUnit.Code || '',
     }))
 
-  console.log(`[brightspace] Filtered to ${courses.length} courses:`, courses.map(c => c.name))
+  console.log(`[brightspace] Filtered to ${courses.length} courses:`, courses.map(c => `${c.name} (${c.brightspaceId})`))
   return courses
 }
 
