@@ -8,12 +8,30 @@
 const BASE_URL = process.env.BRIGHTSPACE_BASE_URL || 'https://brightspace.lmu.edu'
 
 // ─── API call helper ───
+// cookie can be:
+//   - a string like "d2lSessionVal=xxx; d2lSecureSessionVal=yyy" (raw cookie header)
+//   - a JSON string like {"session":"xxx","secure":"yyy"}
+//   - just the d2lSessionVal value (legacy)
 async function bsFetch(path, cookie) {
   const url = `${BASE_URL}${path}`
   const headers = {}
 
   if (cookie) {
-    headers['Cookie'] = `d2lSessionVal=${cookie}`
+    // If it looks like a raw cookie header or already contains =
+    if (cookie.includes('d2lSessionVal=') || cookie.includes('d2lSecureSessionVal=')) {
+      headers['Cookie'] = cookie
+    } else {
+      // Try parsing as JSON
+      try {
+        const parsed = JSON.parse(cookie)
+        let cookieStr = `d2lSessionVal=${parsed.session}`
+        if (parsed.secure) cookieStr += `; d2lSecureSessionVal=${parsed.secure}`
+        headers['Cookie'] = cookieStr
+      } catch {
+        // Fallback: just d2lSessionVal
+        headers['Cookie'] = `d2lSessionVal=${cookie}`
+      }
+    }
   }
 
   const res = await fetch(url, { headers, redirect: 'manual' })

@@ -7,6 +7,7 @@ const API = import.meta.env.DEV
 
 export default function Settings({ user }) {
   const [bsCookie, setBsCookie] = useState('')
+  const [bsSecureCookie, setBsSecureCookie] = useState('')
   const [connectionStatus, setConnectionStatus] = useState('unknown') // unknown, connected, disconnected, checking
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
@@ -34,10 +35,11 @@ export default function Settings({ user }) {
     if (!bsCookie.trim()) return
     setSaving(true)
     try {
+      const cookiePayload = JSON.stringify({ session: bsCookie.trim(), secure: bsSecureCookie.trim() || null })
       const res = await fetch(`${API}/brightspace/connect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cookie: bsCookie.trim() }),
+        body: JSON.stringify({ cookie: cookiePayload }),
         credentials: 'include',
       })
       const data = await res.json()
@@ -180,19 +182,33 @@ export default function Settings({ user }) {
               </ol>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                Brightspace Session Cookie
-              </label>
-              <input
-                type="password"
-                value={bsCookie}
-                onChange={e => setBsCookie(e.target.value)}
-                placeholder="Paste d2lSessionVal value here..."
-                className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Your session cookie is stored securely and only used to sync your Brightspace data. It expires after a few hours — you may need to reconnect periodically.
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                  d2lSessionVal
+                </label>
+                <input
+                  type="password"
+                  value={bsCookie}
+                  onChange={e => setBsCookie(e.target.value)}
+                  placeholder="Paste d2lSessionVal value here..."
+                  className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                  d2lSecureSessionVal
+                </label>
+                <input
+                  type="password"
+                  value={bsSecureCookie}
+                  onChange={e => setBsSecureCookie(e.target.value)}
+                  placeholder="Paste d2lSecureSessionVal value here..."
+                  className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                />
+              </div>
+              <p className="text-xs text-gray-400">
+                Both cookies are needed. They're stored securely and only used to sync your Brightspace data. They expire after a few hours — you may need to reconnect periodically.
               </p>
             </div>
 
