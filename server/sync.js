@@ -148,6 +148,9 @@ export async function syncUserData(userId, cookie) {
       })
       results.courses++
 
+      // Track graded item names for this course (used later to detect completed assignments)
+      const gradedNames = new Set()
+
       // 3. Fetch grades + categories + grade objects for this course
       try {
         const [grades, categories, gradeObjects] = await Promise.all([
@@ -194,6 +197,9 @@ export async function syncUserData(userId, cookie) {
             maxScore: g.maxPoints ?? 100,
             date: g.date ? new Date(g.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           }))
+
+        // Collect graded names for completion detection in step 5
+        mappedGrades.forEach(g => gradedNames.add(g.name.toLowerCase().trim()))
 
         // Only upsert grades if we actually got some — don't wipe existing data
         // when the API returns 403 or empty results for a duplicate course entry
@@ -260,26 +266,30 @@ export async function syncUserData(userId, cookie) {
         const assignments = await brightspace.fetchAssignments(enrollment.brightspaceId, cookie)
         const now = new Date()
 
-        // Build a set of graded item names for this course to detect completed work
-        const gradedNames = new Set()
-        const courseGrades = await db.getGrades(userId)
-        const thisCourseGrades = courseGrades.filter(g => g.course === appId)
-        if (thisCourseGrades.length > 0 && thisCourseGrades[0].grades) {
-          thisCourseGrades[0].grades.forEach(g => {
-            gradedNames.add(g.name.toLowerCase().trim())
-          })
-        }
-
         for (const assignment of assignments) {
           if (assignment.isHidden) continue
 
           // Parse due date
           const dueDate = assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : null
 
-          // Check if this assignment has been graded (strongest completion signal)
+          // Smart matching: check if this assignment has been graded
+          // Uses word-overlap matching since names often differ
+          // e.g. grade "Camelbak" matches assignment "Camelbak case study answers"
+          // e.g. grade "Case study 1 Ethics Harmonix" matches assignment "ETHICS / HARMONIX"
           const assignmentNameLower = assignment.name.toLowerCase().trim()
-          const isGraded = gradedNames.has(assignmentNameLower) ||
-            [...gradedNames].some(gn => assignmentNameLower.includes(gn) || gn.includes(assignmentNameLower))
+          const assignmentWords = assignmentNameLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
+
+          const isGraded = [...gradedNames].some(gn => {
+            // Exact match
+            if (gn === assignmentNameLower) return true
+            // One contains the other
+            if (assignmentNameLower.includes(gn) || gn.includes(assignmentNameLower)) return true
+            // Word overlap: if 50%+ of significant words match, consider it the same
+            const gradeWords = gn.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
+            if (gradeWords.length === 0 || assignmentWords.length === 0) return false
+            const matchCount = assignmentWords.filter(w => gradeWords.some(gw => gw.includes(w) || w.includes(gw))).length
+            return matchCount >= Math.min(assignmentWords.length, gradeWords.length) * 0.5
+          })
 
           // Skip assignments that are past due AND already graded
           if (dueDate) {
@@ -352,8 +362,15 @@ export async function syncUserData(userId, cookie) {
 
           // Check if already graded (means they took it)
           const quizNameLower = quiz.name.toLowerCase().trim()
-          const isQuizGraded = gradedNames.has(quizNameLower) ||
-            [...gradedNames].some(gn => quizNameLower.includes(gn) || gn.includes(quizNameLower))
+          const quizWords = quizNameLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
+          const isQuizGraded = [...gradedNames].some(gn => {
+            if (gn === quizNameLower) return true
+            if (quizNameLower.includes(gn) || gn.includes(quizNameLower)) return true
+            const gradeWords = gn.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
+            if (gradeWords.length === 0 || quizWords.length === 0) return false
+            const matchCount = quizWords.filter(w => gradeWords.some(gw => gw.includes(w) || w.includes(gw))).length
+            return matchCount >= Math.min(quizWords.length, gradeWords.length) * 0.5
+          })
 
           await db.upsertSyncedTodo(userId, {
             course: appId,
