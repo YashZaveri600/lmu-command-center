@@ -50,15 +50,54 @@ async function bsFetch(path, cookie) {
 
 // ─── Get enrolled courses ───
 export async function fetchEnrollments(cookie) {
-  const data = await bsFetch('/d2l/api/lp/1.0/enrollments/myenrollments/?sortBy=name', cookie)
-  // Filter to active courses (not withdrawn, has a valid OrgUnitId)
-  const courses = (data.Items || [])
-    .filter(item => item.OrgUnit && item.OrgUnit.Type?.Id === 3) // Type 3 = course offering
+  // Try multiple API versions and pagination
+  let allItems = []
+  let bookmark = null
+  let attempts = 0
+
+  do {
+    const url = bookmark
+      ? `/d2l/api/lp/1.0/enrollments/myenrollments/?sortBy=name&bookmark=${bookmark}`
+      : '/d2l/api/lp/1.0/enrollments/myenrollments/?sortBy=name'
+
+    const data = await bsFetch(url, cookie)
+    console.log(`[brightspace] Enrollment response keys:`, Object.keys(data || {}))
+
+    const items = data.Items || data.items || []
+    console.log(`[brightspace] Got ${items.length} enrollment items (page ${attempts + 1})`)
+
+    if (items.length > 0) {
+      console.log(`[brightspace] Sample item keys:`, Object.keys(items[0]))
+      if (items[0].OrgUnit) console.log(`[brightspace] OrgUnit sample:`, JSON.stringify(items[0].OrgUnit).slice(0, 200))
+    }
+
+    allItems = allItems.concat(items)
+
+    // Handle pagination
+    bookmark = data.PagingInfo?.HasMoreItems ? data.PagingInfo.Bookmark : null
+    attempts++
+  } while (bookmark && attempts < 10)
+
+  console.log(`[brightspace] Total enrollment items: ${allItems.length}`)
+
+  // Filter to courses - be lenient with the type filter
+  const courses = allItems
+    .filter(item => {
+      if (!item.OrgUnit) return false
+      // Accept Type.Id 3 (course offering) or any item with a course-like code
+      const typeId = item.OrgUnit.Type?.Id
+      const code = item.OrgUnit.Code || ''
+      const name = item.OrgUnit.Name || ''
+      // Include if it's type 3, or has a course code pattern, or name contains course indicators
+      return typeId === 3 || /^[A-Z]{2,4}[.-]\d{4}/i.test(code) || /spring|fall|summer/i.test(name)
+    })
     .map(item => ({
       brightspaceId: item.OrgUnit.Id,
       name: item.OrgUnit.Name,
-      code: item.OrgUnit.Code,
+      code: item.OrgUnit.Code || '',
     }))
+
+  console.log(`[brightspace] Filtered to ${courses.length} courses:`, courses.map(c => c.name))
   return courses
 }
 
