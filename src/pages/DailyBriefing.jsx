@@ -1,7 +1,11 @@
-import React from 'react'
-import { Sun, Sunset, Moon, Flame, Calendar, BookOpen, Mail, CheckSquare, TrendingUp } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Sun, Sunset, Moon, Flame, Calendar, BookOpen, Mail, CheckSquare, TrendingUp, Sparkles, Loader2 } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+
+const API = import.meta.env.DEV
+  ? `http://${window.location.hostname}:3001/api`
+  : '/api'
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -28,7 +32,20 @@ function isThisWeek(date) {
   return date >= startOfWeek && date < endOfWeek
 }
 
-export default function DailyBriefing({ updates, todos, emails, courses, schedule, semester, studySessions, onNavigate }) {
+export default function DailyBriefing({ updates, todos, emails, courses, schedule, semester, studySessions, onNavigate, user }) {
+  const [aiBriefing, setAiBriefing] = useState(null)
+  const [loadingBriefing, setLoadingBriefing] = useState(false)
+
+  useEffect(() => {
+    if (!courses?.length) return
+    setLoadingBriefing(true)
+    fetch(`${API}/ai/briefing`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (data.ok) setAiBriefing(data.briefing) })
+      .catch(() => {})
+      .finally(() => setLoadingBriefing(false))
+  }, [courses?.length])
+
   if (!courses) return null
 
   const today = new Date()
@@ -83,11 +100,32 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
         <div className="flex items-center justify-center gap-3">
           {greeting.icon}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {greeting.text}, Yash
+            {greeting.text}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
           </h1>
         </div>
         <p className="text-gray-500 dark:text-gray-400">{formatDateNice(today)}</p>
       </div>
+
+      {/* AI Daily Briefing */}
+      {(aiBriefing || loadingBriefing) && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles size={18} className="text-blue-500" />
+            <h3 className="font-semibold text-blue-900 dark:text-blue-300">AI Daily Briefing</h3>
+          </div>
+          {loadingBriefing ? (
+            <div className="flex items-center gap-2 text-sm text-blue-500">
+              <Loader2 size={14} className="animate-spin" /> Analyzing your courses...
+            </div>
+          ) : (
+            <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
+              {aiBriefing.split('\n').filter(p => p.trim()).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Semester progress and streak */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

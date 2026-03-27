@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url'
 import db from './db/index.js'
 import brightspace from './brightspace.js'
 import { syncUserData } from './sync.js'
+import { generateDailyBriefing, whatDoINeed } from './ai.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.API_PORT || 3001
@@ -414,6 +415,116 @@ app.post('/api/sync', async (req, res) => {
   }
 })
 
+// ─── AI Endpoints ───
+
+// AI Daily Briefing
+app.get('/api/ai/briefing', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const [courses, grades, todos, updates] = await Promise.all([
+      db.getCourses(uid),
+      db.getGrades(uid),
+      db.getTodos(uid),
+      db.getUpdates(uid),
+    ])
+    const briefing = await generateDailyBriefing({ courses, grades, todos, announcements: updates })
+    if (!briefing) return res.json({ ok: false, error: 'AI not configured. Add ANTHROPIC_API_KEY to enable.' })
+    res.json({ ok: true, briefing })
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message })
+  }
+})
+
+// AI "What do I need?" grade calculator
+app.post('/api/ai/grade-calc', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const { courseId, targetGrade } = req.body
+    const grades = await db.getGrades(uid)
+    const courseData = grades.find(g => g.course === courseId)
+    if (!courseData) return res.json({ ok: false, error: 'Course not found' })
+
+    const courses = await db.getCourses(uid)
+    const course = courses.find(c => c.id === courseId)
+
+    const result = await whatDoINeed({
+      courseName: course?.name || courseId,
+      currentGrades: courseData.grades || [],
+      weights: courseData.weights || {},
+      targetGrade: targetGrade || 90,
+    })
+    if (!result) return res.json({ ok: false, error: 'AI not configured. Add ANTHROPIC_API_KEY to enable.' })
+    res.json({ ok: true, result })
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message })
+  }
+})
+
+// AI Chat — ask anything about your courses, grades, tasks
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const { message } = req.body
+    if (!message) return res.status(400).json({ ok: false, error: 'Message required' })
+
+    const API_KEY = process.env.ANTHROPIC_API_KEY
+    if (!API_KEY) return res.json({ ok: false, error: 'AI not configured. Add ANTHROPIC_API_KEY to enable.' })
+
+    // Gather all student data for context
+    const [courses, grades, todos, updates] = await Promise.all([
+      db.getCourses(uid),
+      db.getGrades(uid),
+      db.getTodos(uid),
+      db.getUpdates(uid),
+    ])
+
+    const today = new Date().toISOString().split('T')[0]
+    const pendingTasks = (todos || []).filter(t => !t.done)
+    const announcements = (updates || []).filter(u => u.type === 'announcement').slice(0, 10)
+
+    const context = `Student's data as of ${today}:
+
+COURSES: ${(courses || []).map(c => `${c.shortCode} - ${c.name}`).join(', ')}
+
+PENDING TASKS (${pendingTasks.length}):
+${pendingTasks.map(t => `- [${t.course}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' ⚠️ OVERDUE' : ''}`).join('\n') || 'None'}
+
+GRADES:
+${(grades || []).map(g => {
+  if (!g.grades?.length) return `${g.course}: No grades yet`
+  const avg = g.grades.reduce((s, gr) => s + (gr.score / gr.maxScore) * 100, 0) / g.grades.length
+  return `${g.course} (${avg.toFixed(1)}% avg): ${g.grades.map(gr => `${gr.name} ${gr.score}/${gr.maxScore}`).join(', ')}`
+}).join('\n')}
+
+RECENT ANNOUNCEMENTS:
+${announcements.map(a => `- [${a.course}] ${a.title}: ${(a.body || '').slice(0, 100)}`).join('\n') || 'None'}`
+
+    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: `You are EduSync AI, a helpful university assistant embedded in a student's school app. You have access to their real course data. Answer questions about their grades, tasks, schedule, and academics. Be concise, specific, and use their actual data. Never make up information. If they ask about something not in the data, say so. Keep responses brief (2-4 sentences unless they need more detail).`,
+        messages: [{
+          role: 'user',
+          content: `${context}\n\nStudent's question: ${message}`
+        }],
+      }),
+    })
+
+    if (!apiRes.ok) return res.json({ ok: false, error: 'AI request failed' })
+    const data = await apiRes.json()
+    res.json({ ok: true, response: data.content?.[0]?.text })
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message })
+  }
+})
+
 // --- Webhook endpoints (still supported for backward compat with sync script) ---
 app.post('/api/webhook/grades', async (req, res) => {
   try {
@@ -537,7 +648,37 @@ if (fs.existsSync(distPath)) {
   })
 }
 
+// ─── Auto-sync every 2 hours ───
+// Syncs all users who have a valid Brightspace connection
+async function autoSyncAll() {
+  try {
+    const { rows } = await db.pool.query(
+      `SELECT DISTINCT ut.user_id, ut.access_token
+       FROM user_tokens ut WHERE ut.provider = 'brightspace' AND ut.access_token IS NOT NULL`
+    )
+    if (rows.length === 0) return
+    console.log(`[auto-sync] Starting sync for ${rows.length} users...`)
+    for (const row of rows) {
+      try {
+        const results = await syncUserData(row.user_id, row.access_token)
+        console.log(`[auto-sync] User ${row.user_id}: ${results.courses} courses, ${results.grades} grades, ${results.tasks || 0} tasks`)
+      } catch (e) {
+        console.error(`[auto-sync] User ${row.user_id} failed:`, e.message)
+      }
+    }
+    console.log('[auto-sync] Complete')
+  } catch (e) {
+    console.error('[auto-sync] Failed:', e.message)
+  }
+}
+
+const TWO_HOURS = 2 * 60 * 60 * 1000
+setInterval(autoSyncAll, TWO_HOURS)
+// Also run first sync 30 seconds after startup (let DB connect first)
+setTimeout(autoSyncAll, 30_000)
+
 const port = process.env.PORT || PORT
 app.listen(port, () => {
   console.log(`\n  EduSync server running at http://localhost:${port}`)
+  console.log(`  Auto-sync enabled: every 2 hours`)
 })

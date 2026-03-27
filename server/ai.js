@@ -89,4 +89,134 @@ Respond ONLY with the JSON array, no markdown or explanation.`
   }
 }
 
-export default { extractTasks }
+/**
+ * Generate a personalized daily briefing for a student
+ * Uses their grades, todos, courses, and announcements to create an actionable summary
+ */
+export async function generateDailyBriefing({ courses, grades, todos, announcements }) {
+  if (!ANTHROPIC_API_KEY) return null
+
+  const today = new Date().toISOString().split('T')[0]
+  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+
+  // Build context from student data
+  const courseList = (courses || []).map(c => `${c.shortCode} - ${c.name}`).join(', ')
+
+  const pendingTasks = (todos || []).filter(t => !t.done).map(t => {
+    const overdue = t.due && new Date(t.due + 'T23:59:59') < new Date()
+    return `- [${t.course}] ${t.task}${t.due ? ` (due ${t.due})` : ''}${overdue ? ' ⚠️ OVERDUE' : ''} [${t.priority}]`
+  }).join('\n')
+
+  const gradesSummary = (grades || []).map(g => {
+    if (!g.grades || g.grades.length === 0) return null
+    const avg = g.grades.reduce((sum, gr) => sum + (gr.score / gr.maxScore) * 100, 0) / g.grades.length
+    return `${g.course}: ${avg.toFixed(1)}% (${g.grades.length} graded items)`
+  }).filter(Boolean).join('\n')
+
+  const recentAnnouncements = (announcements || [])
+    .filter(a => a.type === 'announcement')
+    .slice(0, 5)
+    .map(a => `- [${a.course}] ${a.title}`)
+    .join('\n')
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: `You are EduSync AI, a friendly university assistant. Generate a brief daily briefing for a student. Today is ${dayName}, ${today}.
+
+Courses: ${courseList}
+
+Pending Tasks:
+${pendingTasks || 'None!'}
+
+Grade Averages:
+${gradesSummary || 'No grades yet'}
+
+Recent Announcements:
+${recentAnnouncements || 'None'}
+
+Write a concise, motivating daily briefing (3-5 short paragraphs max). Include:
+1. A quick greeting with what day it is
+2. Most urgent items (overdue or due today/tomorrow) — be specific
+3. A quick note on grades if any are trending up or down
+4. One motivating line to end
+
+Keep it conversational and brief. Use the student's actual data — don't make anything up. No markdown headers, just plain text paragraphs.`
+        }],
+      }),
+    })
+
+    if (!res.ok) {
+      console.error(`[ai] Briefing API error: ${res.status}`)
+      return null
+    }
+
+    const data = await res.json()
+    return data.content?.[0]?.text || null
+  } catch (e) {
+    console.error('[ai] Briefing generation failed:', e.message)
+    return null
+  }
+}
+
+/**
+ * Calculate what score is needed on remaining work to achieve a target grade
+ */
+export async function whatDoINeed({ courseName, currentGrades, weights, targetGrade }) {
+  if (!ANTHROPIC_API_KEY) return null
+
+  try {
+    const gradesInfo = currentGrades.map(g =>
+      `${g.name} (${g.category}): ${g.score}/${g.maxScore}`
+    ).join('\n')
+
+    const weightsInfo = Object.entries(weights || {}).map(([cat, w]) =>
+      `${cat}: ${(w.weight * 100).toFixed(0)}%`
+    ).join(', ')
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `You are a grade calculator for ${courseName}.
+
+Category weights: ${weightsInfo || 'equal weight'}
+
+Current grades:
+${gradesInfo}
+
+Target grade: ${targetGrade}%
+
+Calculate what average score the student needs on remaining assignments to achieve ${targetGrade}%. Be specific about which categories still need work. Give a brief, clear answer — 2-3 sentences max. If the target is already achieved, say so.`
+        }],
+      }),
+    })
+
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.content?.[0]?.text || null
+  } catch (e) {
+    console.error('[ai] Grade calc failed:', e.message)
+    return null
+  }
+}
+
+export default { extractTasks, generateDailyBriefing, whatDoINeed }

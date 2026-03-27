@@ -16,6 +16,7 @@ import StudyTimer from './pages/StudyTimer'
 import CalendarView from './pages/CalendarView'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/Settings'
+import AiChat from './components/AiChat'
 import { useAPI, useSSE } from './hooks/useData'
 import { useDarkMode } from './hooks/useDarkMode'
 
@@ -131,7 +132,7 @@ function AuthenticatedApp({ user, setAuthState, page, setPage, dark, toggleDark,
       <main className="flex-1 p-4 pt-16 lg:pt-6 lg:p-8 max-w-6xl overflow-y-auto">
         {page !== 'briefing' && <SearchBar courses={courses} onNavigate={navigate} />}
 
-        {page === 'briefing' && <DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} />}
+        {page === 'briefing' && <DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} />}
         {page === 'dashboard' && <Dashboard updates={updates} todos={todos} emails={emails} courses={courses} onNavigate={navigate} />}
         {page === 'updates' && <Updates updates={updates} courses={courses} />}
         {page === 'todos' && <Todos todos={todos} courses={courses} setTodos={setTodos} />}
@@ -146,6 +147,7 @@ function AuthenticatedApp({ user, setAuthState, page, setPage, dark, toggleDark,
         {page === 'calendar' && <CalendarView updates={updates} courses={courses} semester={semester} />}
         {page === 'settings' && <SettingsPage user={user} />}
       </main>
+      <AiChat />
     </div>
   )
 }
