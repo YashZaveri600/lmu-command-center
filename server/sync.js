@@ -282,16 +282,24 @@ export async function syncUserData(userId, cookie) {
           // Skip anything more than 60 days in the future (not relevant yet)
           if (daysUntil > 60) continue
 
-          // Due date passed = done. Period.
-          const isDone = daysUntil < 0
+          // Check if submitted on Brightspace
+          const submitted = await brightspace.fetchMySubmissions(
+            enrollment.brightspaceId,
+            assignment.id,
+            cookie
+          )
 
-          // Only show upcoming tasks (due in the future or within last 2 days for grace period)
-          // Skip old stuff entirely — no one needs to see assignments from weeks ago
-          if (daysUntil < -2) continue
+          // If past due and NOT submitted = overdue (still pending, high priority)
+          // If past due and submitted = done
+          const isDone = submitted
+          const isOverdue = daysUntil < 0 && !submitted
 
-          // Priority
+          // Skip old submitted assignments (more than 7 days ago and done)
+          if (daysUntil < -7 && isDone) continue
+
+          // Priority: overdue = high, due soon = high, far out = low
           let priority = 'medium'
-          if (daysUntil <= 2 && daysUntil >= 0) priority = 'high'
+          if (isOverdue || (daysUntil <= 2 && daysUntil >= 0)) priority = 'high'
           else if (daysUntil > 7) priority = 'low'
 
           await db.upsertSyncedTodo(userId, {
@@ -320,16 +328,22 @@ export async function syncUserData(userId, cookie) {
           if (!quiz.isActive) continue
 
           const dueDate = quiz.dueDate ? new Date(quiz.dueDate).toISOString().split('T')[0] : null
-          if (!dueDate) continue // quizzes without due dates aren't actionable
+          if (!dueDate) continue
 
           const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
-          if (daysUntil < -2) continue  // old quizzes, skip
-          if (daysUntil > 60) continue  // far future, skip
+          if (daysUntil > 60) continue
 
-          const isDone = daysUntil < 0
+          // Quizzes: check if graded (means they took it)
+          const quizNameLower = quiz.name.toLowerCase().trim()
+          const isDone = [...gradedNames].some(gn =>
+            gn === quizNameLower || gn.includes(quizNameLower) || quizNameLower.includes(gn)
+          )
+          const isOverdue = daysUntil < 0 && !isDone
+
+          if (daysUntil < -7 && isDone) continue
 
           let priority = 'medium'
-          if (daysUntil <= 2 && daysUntil >= 0) priority = 'high'
+          if (isOverdue || (daysUntil <= 2 && daysUntil >= 0)) priority = 'high'
           else if (daysUntil > 7) priority = 'low'
 
           await db.upsertSyncedTodo(userId, {
@@ -367,10 +381,10 @@ export async function syncUserData(userId, cookie) {
       }
     }
 
-    // Clean up old synced todos: remove BS-synced tasks that are past due by 3+ days
+    // Clean up old COMPLETED synced todos (keep overdue ones visible)
     try {
       await db.pool.query(
-        `DELETE FROM todos WHERE user_id = $1 AND source = 'brightspace' AND due < NOW() - INTERVAL '3 days'`,
+        `DELETE FROM todos WHERE user_id = $1 AND source = 'brightspace' AND done = true AND due < NOW() - INTERVAL '7 days'`,
         [userId]
       )
     } catch (e) {

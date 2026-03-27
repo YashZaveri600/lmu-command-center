@@ -110,8 +110,14 @@ export default function Todos({ todos, courses, setTodos }) {
 }
 
 function TodoItem({ item, courses, onToggle, onDelete, priorityColors }) {
+  const isOverdue = !item.done && item.due && new Date(item.due + 'T23:59:59') < new Date()
+
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-center gap-3 group">
+    <div className={`border rounded-lg p-3 flex items-center gap-3 group ${
+      isOverdue
+        ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+    }`}>
       <input
         type="checkbox"
         checked={item.done}
@@ -119,7 +125,7 @@ function TodoItem({ item, courses, onToggle, onDelete, priorityColors }) {
         className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
       />
       <CourseBadge courseId={item.course} courses={courses} />
-      <span className={`flex-1 text-sm ${item.done ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+      <span className={`flex-1 text-sm ${item.done ? 'line-through text-gray-400' : isOverdue ? 'text-red-700 dark:text-red-400 font-medium' : 'text-gray-900 dark:text-white'}`}>
         {item.task}
       </span>
       {item.source && item.source !== 'manual' && (
@@ -131,10 +137,16 @@ function TodoItem({ item, courses, onToggle, onDelete, priorityColors }) {
           {item.source === 'brightspace' ? 'BS' : 'AI'}
         </span>
       )}
-      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[item.priority]}`}>
-        {item.priority}
-      </span>
-      <span className="text-xs text-gray-400">{item.due ? formatDate(item.due) : ''}</span>
+      {isOverdue ? (
+        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+          OVERDUE
+        </span>
+      ) : (
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[item.priority]}`}>
+          {item.priority}
+        </span>
+      )}
+      <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>{item.due ? formatDate(item.due) : ''}</span>
       <button
         onClick={() => onDelete(item.id)}
         className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all"
