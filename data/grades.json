@@ -42,7 +42,7 @@
       "grades": [
         {
           "id": "grade-managing-bs-802401",
-          "category": "Numeric",
+          "category": "Exam 1",
           "name": "Exam #1",
           "score": 58,
           "maxScore": 60,
@@ -50,7 +50,7 @@
         },
         {
           "id": "grade-managing-bs-802404",
-          "category": "Numeric",
+          "category": "Mentoring Assignment",
           "name": "Mentoring Assignment",
           "score": 60,
           "maxScore": 60,
@@ -58,7 +58,7 @@
         },
         {
           "id": "grade-managing-bs-802406",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 1 Attendance & Participation",
           "score": 2,
           "maxScore": 2,
@@ -66,7 +66,7 @@
         },
         {
           "id": "grade-managing-bs-802407",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 2 Attendance & Participation",
           "score": 2,
           "maxScore": 2,
@@ -74,7 +74,7 @@
         },
         {
           "id": "grade-managing-bs-802408",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 3 Attendance & Participation ",
           "score": 1,
           "maxScore": 2,
@@ -82,7 +82,7 @@
         },
         {
           "id": "grade-managing-bs-802409",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 4 Attendance & Participation",
           "score": 1,
           "maxScore": 2,
@@ -90,7 +90,7 @@
         },
         {
           "id": "grade-managing-bs-802410",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 5 Attendance & Participation ",
           "score": 1,
           "maxScore": 2,
@@ -98,7 +98,7 @@
         },
         {
           "id": "grade-managing-bs-802411",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 6 Attendance & Participation ",
           "score": 4,
           "maxScore": 4,
@@ -106,7 +106,7 @@
         },
         {
           "id": "grade-managing-bs-802412",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 7 Attendance & Participation",
           "score": 1,
           "maxScore": 2,
@@ -114,7 +114,7 @@
         },
         {
           "id": "grade-managing-bs-802413",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 8 Attendance & Participation ",
           "score": 2,
           "maxScore": 2,
@@ -122,7 +122,7 @@
         },
         {
           "id": "grade-managing-bs-802414",
-          "category": "Numeric",
+          "category": "Connect Homework",
           "name": "Week 1 Application Exercises",
           "score": 1,
           "maxScore": 1,
@@ -130,7 +130,7 @@
         },
         {
           "id": "grade-managing-bs-802415",
-          "category": "Numeric",
+          "category": "Connect Homework",
           "name": "What is Organizational Behavior?",
           "score": 1,
           "maxScore": 1,
@@ -138,7 +138,7 @@
         },
         {
           "id": "grade-managing-bs-802416",
-          "category": "Numeric",
+          "category": "Connect Homework",
           "name": "Human Resource Management",
           "score": 2,
           "maxScore": 2,
@@ -146,7 +146,7 @@
         },
         {
           "id": "grade-managing-bs-802417",
-          "category": "Numeric",
+          "category": "Connect Homework",
           "name": "Organizational Structure",
           "score": 1,
           "maxScore": 1,
@@ -154,7 +154,7 @@
         },
         {
           "id": "grade-managing-bs-802418",
-          "category": "Numeric",
+          "category": "Connect Homework",
           "name": "Leadership: Styles and Behaviors",
           "score": 1,
           "maxScore": 1,
@@ -162,7 +162,7 @@
         },
         {
           "id": "grade-managing-bs-802419",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 9 Attendance & Participation",
           "score": 2,
           "maxScore": 2,
@@ -170,7 +170,7 @@
         },
         {
           "id": "grade-managing-bs-802420",
-          "category": "Numeric",
+          "category": "Attendance/Participation",
           "name": "Week 10 Attendance & Participation ",
           "score": 2,
           "maxScore": 2,
@@ -178,7 +178,7 @@
         },
         {
           "id": "grade-managing-bs-831795",
-          "category": "Numeric",
+          "category": "Peer Evaluation",
           "name": "Peer Evaluation 1",
           "score": 20,
           "maxScore": 20,
@@ -186,7 +186,7 @@
         },
         {
           "id": "grade-managing-bs-831798",
-          "category": "Numeric",
+          "category": "Connect Homework",
           "name": "Power, Influence and Political Behavior",
           "score": 1,
           "maxScore": 1,
@@ -194,7 +194,7 @@
         },
         {
           "id": "grade-managing-bs-834103",
-          "category": "Numeric",
+          "category": "CBA Advantage Points",
           "name": "CBA Advantage Event #1 ",
           "score": 20,
           "maxScore": 20,
@@ -436,7 +436,7 @@
       "grades": [
         {
           "id": "grade-accounting-bs-803862",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 01 HW",
           "score": 100,
           "maxScore": 100,
@@ -444,7 +444,7 @@
         },
         {
           "id": "grade-accounting-bs-803863",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 02 HW",
           "score": 100,
           "maxScore": 100,
@@ -452,7 +452,7 @@
         },
         {
           "id": "grade-accounting-bs-803864",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 03 HW",
           "score": 95.5,
           "maxScore": 100,
@@ -460,7 +460,7 @@
         },
         {
           "id": "grade-accounting-bs-803866",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 05 HW",
           "score": 100,
           "maxScore": 100,
@@ -468,7 +468,7 @@
         },
         {
           "id": "grade-accounting-bs-803867",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 06 HW",
           "score": 100,
           "maxScore": 100,
@@ -476,7 +476,7 @@
         },
         {
           "id": "grade-accounting-bs-803869",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 08 HW",
           "score": 10,
           "maxScore": 100,
@@ -484,7 +484,7 @@
         },
         {
           "id": "grade-accounting-bs-803873",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 1 Class Assignment",
           "score": 100,
           "maxScore": 100,
@@ -492,7 +492,7 @@
         },
         {
           "id": "grade-accounting-bs-803874",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 2 Class Assignment",
           "score": 100,
           "maxScore": 100,
@@ -500,7 +500,7 @@
         },
         {
           "id": "grade-accounting-bs-803875",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 3 Class Assignment",
           "score": 0,
           "maxScore": 100,
@@ -508,7 +508,7 @@
         },
         {
           "id": "grade-accounting-bs-803877",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 5 Class Assignment",
           "score": 100,
           "maxScore": 100,
@@ -516,7 +516,7 @@
         },
         {
           "id": "grade-accounting-bs-803878",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 6 Class Assignment",
           "score": 100,
           "maxScore": 100,
@@ -524,7 +524,7 @@
         },
         {
           "id": "grade-accounting-bs-803880",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 8 Class Assignment",
           "score": 100,
           "maxScore": 100,
@@ -532,7 +532,7 @@
         },
         {
           "id": "grade-accounting-bs-803886",
-          "category": "Numeric",
+          "category": "Midterm 1",
           "name": "Midterm 1",
           "score": 96,
           "maxScore": 100,
@@ -540,7 +540,7 @@
         },
         {
           "id": "grade-accounting-bs-828996",
-          "category": "Numeric",
+          "category": "Discussion Questions",
           "name": "Discussion Questions 1",
           "score": 50,
           "maxScore": 50,
@@ -548,7 +548,7 @@
         },
         {
           "id": "grade-accounting-bs-835432",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 09 HW",
           "score": 100,
           "maxScore": 100,
@@ -556,7 +556,7 @@
         },
         {
           "id": "grade-accounting-bs-835433",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 9 Class Assignment",
           "score": 100,
           "maxScore": 100,
@@ -564,7 +564,7 @@
         },
         {
           "id": "grade-accounting-bs-835434",
-          "category": "Numeric",
+          "category": "Homework",
           "name": "CH 10 HW",
           "score": 100,
           "maxScore": 100,
@@ -572,7 +572,7 @@
         },
         {
           "id": "grade-accounting-bs-835435",
-          "category": "Numeric",
+          "category": "Classwork",
           "name": "CH 10 Class Assignment",
           "score": 0,
           "maxScore": 100,
