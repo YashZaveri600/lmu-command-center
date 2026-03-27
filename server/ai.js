@@ -107,10 +107,33 @@ export async function generateDailyBriefing({ courses, grades, todos, announceme
     return `- [${t.course}] ${t.task}${t.due ? ` (due ${t.due})` : ''}${overdue ? ' ⚠️ OVERDUE' : ''} [${t.priority}]`
   }).join('\n')
 
+  // Compute weighted GPA per course (same logic as frontend)
+  const letterGrade = (pct) => {
+    if (pct >= 93) return 'A'; if (pct >= 90) return 'A-'; if (pct >= 87) return 'B+'
+    if (pct >= 83) return 'B'; if (pct >= 80) return 'B-'; return 'C or below'
+  }
+  const gpaMap = { 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7 }
+
   const gradesSummary = (grades || []).map(g => {
     if (!g.grades || g.grades.length === 0) return null
-    const avg = g.grades.reduce((sum, gr) => sum + (gr.score / gr.maxScore) * 100, 0) / g.grades.length
-    return `${g.course}: ${avg.toFixed(1)}% (${g.grades.length} graded items)`
+    const weights = g.weights || {}
+    const catScores = {}, catCounts = {}
+    g.grades.forEach(gr => {
+      if (!catScores[gr.category]) { catScores[gr.category] = 0; catCounts[gr.category] = 0 }
+      catScores[gr.category] += (gr.score / gr.maxScore) * 100
+      catCounts[gr.category] += 1
+    })
+    let totalW = 0, totalWt = 0
+    Object.entries(catScores).forEach(([cat, total]) => {
+      const avg = total / catCounts[cat]
+      const w = weights[cat]
+      const wt = typeof w === 'number' ? w * 100 : (w?.weight != null ? w.weight * 100 : 0)
+      if (wt > 0) { totalW += avg * (wt / 100); totalWt += wt }
+    })
+    const pct = totalWt > 0 ? (totalW / totalWt) * 100 : null
+    if (!pct) return null
+    const letter = letterGrade(pct)
+    return `${g.course}: ${letter} (${pct.toFixed(1)}%, GPA ${(gpaMap[letter] || 2.0).toFixed(1)})`
   }).filter(Boolean).join('\n')
 
   const recentAnnouncements = (announcements || [])

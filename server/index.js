@@ -479,31 +479,68 @@ app.post('/api/ai/chat', async (req, res) => {
       db.getUpdates(uid),
     ])
 
-    // getGrades returns { courses: { courseId: { weights, grades } } }
-    const gradesList = Object.entries(gradesData?.courses || {}).map(([id, data]) => ({
-      course: id, ...data
-    }))
+    // Compute real GPA and letter grades using weighted categories
+    const letterGrade = (pct) => {
+      if (pct >= 93) return 'A'; if (pct >= 90) return 'A-'; if (pct >= 87) return 'B+'
+      if (pct >= 83) return 'B'; if (pct >= 80) return 'B-'; if (pct >= 77) return 'C+'
+      if (pct >= 73) return 'C'; if (pct >= 70) return 'C-'; return 'F'
+    }
+    const gpaPoints = { 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'F': 0.0 }
+
+    const courseEntries = Object.entries(gradesData?.courses || {})
+    const courseGradeInfo = courseEntries.map(([id, data]) => {
+      const grades = data.grades || []
+      const weights = data.weights || {}
+      if (grades.length === 0) return { id, pct: null, letter: null, gpa: null, grades }
+
+      // Weighted category average (same as frontend)
+      const catScores = {}, catCounts = {}
+      grades.forEach(g => {
+        if (!catScores[g.category]) { catScores[g.category] = 0; catCounts[g.category] = 0 }
+        catScores[g.category] += (g.score / g.maxScore) * 100
+        catCounts[g.category] += 1
+      })
+      let totalWeighted = 0, totalWeight = 0
+      Object.entries(catScores).forEach(([cat, total]) => {
+        const avg = total / catCounts[cat]
+        const w = weights[cat]
+        const weight = typeof w === 'number' ? w * 100 : (w?.weight != null ? w.weight * 100 : 0)
+        if (weight > 0) { totalWeighted += avg * (weight / 100); totalWeight += weight }
+      })
+      const pct = totalWeight > 0 ? (totalWeighted / totalWeight) * 100 : null
+      const letter = pct !== null ? letterGrade(pct) : null
+      const gpa = letter ? gpaPoints[letter] || 0 : null
+      return { id, pct, letter, gpa, grades }
+    })
+
+    const validGPAs = courseGradeInfo.filter(c => c.gpa !== null)
+    const overallGPA = validGPAs.length > 0
+      ? (validGPAs.reduce((s, c) => s + c.gpa, 0) / validGPAs.length).toFixed(2)
+      : 'N/A'
 
     const today = new Date().toISOString().split('T')[0]
     const pendingTasks = (todos || []).filter(t => !t.done)
     const announcements = (updates || []).filter(u => u.type === 'announcement').slice(0, 10)
 
+    const courseName = (id) => (courses || []).find(c => c.id === id)?.name || id
+
     const context = `Student's data as of ${today}:
 
 COURSES: ${(courses || []).map(c => `${c.shortCode} - ${c.name}`).join(', ')}
 
-PENDING TASKS (${pendingTasks.length}):
-${pendingTasks.map(t => `- [${t.course}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' OVERDUE' : ''}`).join('\n') || 'None'}
+OVERALL GPA: ${overallGPA}
 
-GRADES:
-${gradesList.map(g => {
-  if (!g.grades?.length) return `${g.course}: No grades yet`
-  const avg = g.grades.reduce((s, gr) => s + (gr.score / gr.maxScore) * 100, 0) / g.grades.length
-  return `${g.course} (${avg.toFixed(1)}% avg): ${g.grades.map(gr => `${gr.name} ${gr.score}/${gr.maxScore}`).join(', ')}`
+GRADES BY COURSE:
+${courseGradeInfo.map(c => {
+  if (!c.pct) return `${courseName(c.id)}: No grades yet`
+  return `${courseName(c.id)}: ${c.letter} (${c.pct.toFixed(1)}%, ${c.gpa?.toFixed(1)} GPA) — ${c.grades.length} graded items`
 }).join('\n')}
 
+PENDING TASKS (${pendingTasks.length}):
+${pendingTasks.map(t => `- [${courseName(t.course)}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' OVERDUE' : ''}`).join('\n') || 'None'}
+
 RECENT ANNOUNCEMENTS:
-${announcements.map(a => `- [${a.course}] ${a.title}: ${(a.body || '').slice(0, 100)}`).join('\n') || 'None'}`
+${announcements.map(a => `- [${courseName(a.course)}] ${a.title}: ${(a.body || '').slice(0, 200)}`).join('\n') || 'None'}`
 
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -515,7 +552,7 @@ ${announcements.map(a => `- [${a.course}] ${a.title}: ${(a.body || '').slice(0, 
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 600,
-        system: `You are EduSync AI, a helpful university assistant embedded in a student's school app. You have access to their real course data. Answer questions about their grades, tasks, schedule, and academics. Be concise, specific, and use their actual data. Never make up information. If they ask about something not in the data, say so. Keep responses brief (2-4 sentences unless they need more detail).`,
+        system: `You are EduSync AI, a confident and knowledgeable university assistant. You have FULL access to this student's real grades, GPA, tasks, and announcements. Answer with authority — state facts directly, don't hedge or say "I don't have access." The GPA and letter grades provided are the real calculated values. If asked about finals or exam dates, check the announcements and tasks for clues and give your best answer. If info truly isn't in the data, suggest where they can find it (Brightspace, syllabus, professor email). Be concise (2-4 sentences). Be their go-to assistant, not a cautious disclaimer machine.`,
         messages: [{
           role: 'user',
           content: `${context}\n\nStudent's question: ${message}`
