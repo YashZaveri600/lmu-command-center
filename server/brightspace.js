@@ -99,15 +99,32 @@ export async function fetchEnrollments(cookie) {
 
   console.log(`[brightspace] Total enrollment items: ${allItems.length}`)
 
-  // Filter to actual courses
+  // Determine current semester name (e.g., "Spring 2026")
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth() + 1 // 1-12
+  let currentSemester
+  if (month >= 1 && month <= 5) {
+    currentSemester = `Spring ${year}`
+  } else if (month >= 6 && month <= 7) {
+    currentSemester = `Summer ${year}`
+  } else {
+    currentSemester = `Fall ${year}`
+  }
+  console.log(`[brightspace] Current semester: ${currentSemester}`)
+
+  // Filter to current semester courses only
   const courses = allItems
     .filter(item => {
       if (!item.OrgUnit) return false
-      const typeId = item.OrgUnit.Type?.Id
-      const code = item.OrgUnit.Code || ''
       const name = item.OrgUnit.Name || ''
-      // Type 3 = course offering, or match course code patterns, or has semester in name
-      return typeId === 3 || /^[A-Z]{2,4}[.-]\d{3,4}/i.test(code) || /spring\s*20|fall\s*20|summer\s*20/i.test(name)
+      // Only include courses from the current semester
+      return name.toLowerCase().includes(currentSemester.toLowerCase())
+    })
+    // Deduplicate by name (some courses have multiple sections with same name)
+    .filter((item, idx, arr) => {
+      const name = item.OrgUnit.Name
+      return idx === arr.findIndex(i => i.OrgUnit.Name === name)
     })
     .map(item => ({
       brightspaceId: item.OrgUnit.Id,
