@@ -220,7 +220,7 @@
       "grades": [
         {
           "id": "grade-philosophy-bs-812437",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "January 21 Quiz",
           "score": 83.33,
           "maxScore": 100,
@@ -228,7 +228,7 @@
         },
         {
           "id": "grade-philosophy-bs-812438",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "January 28 Quiz",
           "score": 80,
           "maxScore": 100,
@@ -236,7 +236,7 @@
         },
         {
           "id": "grade-philosophy-bs-812439",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "February 2 Quiz ",
           "score": 100,
           "maxScore": 100,
@@ -244,7 +244,7 @@
         },
         {
           "id": "grade-philosophy-bs-812440",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "February 4 Quiz ",
           "score": 100,
           "maxScore": 100,
@@ -252,7 +252,7 @@
         },
         {
           "id": "grade-philosophy-bs-812441",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "February 10 Quiz",
           "score": 90,
           "maxScore": 100,
@@ -260,7 +260,7 @@
         },
         {
           "id": "grade-philosophy-bs-812442",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "February 12 Quiz ",
           "score": 100,
           "maxScore": 100,
@@ -268,7 +268,7 @@
         },
         {
           "id": "grade-philosophy-bs-812443",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "February 18 Quiz ",
           "score": 90,
           "maxScore": 100,
@@ -276,7 +276,7 @@
         },
         {
           "id": "grade-philosophy-bs-812444",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "February 25 Quiz",
           "score": 100,
           "maxScore": 100,
@@ -284,7 +284,7 @@
         },
         {
           "id": "grade-philosophy-bs-812445",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "Cave Allegory 1",
           "score": 100,
           "maxScore": 100,
@@ -292,7 +292,7 @@
         },
         {
           "id": "grade-philosophy-bs-812446",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "Cave Allegory 2",
           "score": 100,
           "maxScore": 100,
@@ -300,7 +300,7 @@
         },
         {
           "id": "grade-philosophy-bs-812447",
-          "category": "Numeric",
+          "category": "Quizzes",
           "name": "March 18 Quiz",
           "score": 100,
           "maxScore": 100,
@@ -338,7 +338,7 @@
       "grades": [
         {
           "id": "grade-marketing-bs-826048",
-          "category": "Numeric",
+          "category": "Case Studies 1-6",
           "name": "Case Study 1 Ethics Harmonix",
           "score": 10,
           "maxScore": 10,
@@ -346,7 +346,7 @@
         },
         {
           "id": "grade-marketing-bs-826049",
-          "category": "Numeric",
+          "category": "Case Studies 1-6",
           "name": "Disney",
           "score": 10,
           "maxScore": 10,
@@ -354,7 +354,7 @@
         },
         {
           "id": "grade-marketing-bs-826050",
-          "category": "Numeric",
+          "category": "Case Studies 1-6",
           "name": "Camelbak",
           "score": 10,
           "maxScore": 10,
@@ -362,7 +362,7 @@
         },
         {
           "id": "grade-marketing-bs-826051",
-          "category": "Numeric",
+          "category": "Case Studies 1-6",
           "name": "Starbucks: Coffee in the land of Tea ",
           "score": 10,
           "maxScore": 10,
@@ -370,7 +370,7 @@
         },
         {
           "id": "grade-marketing-bs-826057",
-          "category": "Numeric",
+          "category": "Oral Individual Check-ins",
           "name": "Targ Mkt Oral Check-in",
           "score": 10,
           "maxScore": 10,
@@ -378,7 +378,7 @@
         },
         {
           "id": "grade-marketing-bs-826058",
-          "category": "Numeric",
+          "category": "Midterm",
           "name": "BCOR 3510 Mid term exam ",
           "score": 49,
           "maxScore": 55,
@@ -386,7 +386,7 @@
         },
         {
           "id": "grade-marketing-bs-833577",
-          "category": "Numeric",
+          "category": "Case Studies 1-6",
           "name": "Case Study 5: PepsiCo ",
           "score": 10,
           "maxScore": 10,
@@ -394,7 +394,7 @@
         },
         {
           "id": "grade-marketing-bs-836095",
-          "category": "Numeric",
+          "category": "Case Studies 1-6",
           "name": "Case Study 6 - Uber Technologies ",
           "score": 10,
           "maxScore": 10,
