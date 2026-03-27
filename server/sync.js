@@ -260,27 +260,48 @@ export async function syncUserData(userId, cookie) {
         const assignments = await brightspace.fetchAssignments(enrollment.brightspaceId, cookie)
         const now = new Date()
 
+        // Build a set of graded item names for this course to detect completed work
+        const gradedNames = new Set()
+        const courseGrades = await db.getGrades(userId)
+        const thisCourseGrades = courseGrades.filter(g => g.course === appId)
+        if (thisCourseGrades.length > 0 && thisCourseGrades[0].grades) {
+          thisCourseGrades[0].grades.forEach(g => {
+            gradedNames.add(g.name.toLowerCase().trim())
+          })
+        }
+
         for (const assignment of assignments) {
           if (assignment.isHidden) continue
 
           // Parse due date
           const dueDate = assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : null
 
-          // Skip assignments that are long past due (more than 7 days ago)
+          // Check if this assignment has been graded (strongest completion signal)
+          const assignmentNameLower = assignment.name.toLowerCase().trim()
+          const isGraded = gradedNames.has(assignmentNameLower) ||
+            [...gradedNames].some(gn => assignmentNameLower.includes(gn) || gn.includes(assignmentNameLower))
+
+          // Skip assignments that are past due AND already graded
           if (dueDate) {
             const due = new Date(dueDate)
             const daysPast = (now - due) / (1000 * 60 * 60 * 24)
-            if (daysPast > 7) continue
+            // Keep recent past-due items (7 days) even if not graded, but skip old graded ones
+            if (daysPast > 7 && isGraded) continue
+            // Skip very old assignments regardless
+            if (daysPast > 30) continue
           }
 
-          // Check if submitted on Brightspace
-          const submitted = await brightspace.fetchMySubmissions(
-            enrollment.brightspaceId,
-            assignment.id,
-            cookie
-          )
+          // Check if submitted on Brightspace (for non-graded items)
+          let submitted = isGraded
+          if (!submitted) {
+            submitted = await brightspace.fetchMySubmissions(
+              enrollment.brightspaceId,
+              assignment.id,
+              cookie
+            )
+          }
 
-          // Determine priority
+          // Determine priority based on due date
           let priority = 'medium'
           if (dueDate) {
             const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
@@ -330,13 +351,15 @@ export async function syncUserData(userId, cookie) {
           }
 
           // Check if already graded (means they took it)
-          const graded = quiz.name && results.grades > 0 // simplified — real check would look at grade data
+          const quizNameLower = quiz.name.toLowerCase().trim()
+          const isQuizGraded = gradedNames.has(quizNameLower) ||
+            [...gradedNames].some(gn => quizNameLower.includes(gn) || gn.includes(quizNameLower))
 
           await db.upsertSyncedTodo(userId, {
             course: appId,
             task: `Quiz: ${quiz.name}`,
             due: dueDate,
-            done: false, // quizzes are auto-completed when they appear in grades
+            done: isQuizGraded,
             priority,
             source: 'brightspace',
             sourceId: `bs-quiz-${enrollment.brightspaceId}-${quiz.id}`,
