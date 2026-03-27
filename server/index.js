@@ -7,6 +7,8 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import db from './db/index.js'
+import brightspace from './brightspace.js'
+import { syncUserData } from './sync.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.API_PORT || 3001
@@ -317,6 +319,97 @@ app.post('/api/study-sessions', async (req, res) => {
     broadcast('study-sessions', data)
     res.status(201).json(data)
   } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// --- Brightspace connection routes ---
+
+// Check Brightspace connection status
+app.get('/api/brightspace/status', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const tokens = await db.getTokens(uid, 'brightspace')
+    const syncInfo = await db.getTokens(uid, 'brightspace_sync')
+    res.json({
+      connected: !!tokens?.accessToken,
+      lastSync: syncInfo?.expiresAt || null,
+    })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Connect Brightspace (save session cookie)
+app.post('/api/brightspace/connect', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const { cookie } = req.body
+    if (!cookie) return res.status(400).json({ error: 'Cookie required' })
+
+    // Verify the cookie works by calling whoami
+    const userInfo = await brightspace.fetchWhoAmI(cookie)
+    if (!userInfo) {
+      return res.json({ ok: false, error: 'Invalid or expired session cookie. Make sure you\'re logged into Brightspace and copied the right cookie.' })
+    }
+
+    // Save the cookie as a token
+    await db.saveTokens(uid, 'brightspace', {
+      accessToken: cookie,
+      refreshToken: null,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // cookies typically last ~24h
+      scopes: `userId:${userInfo.userId}`,
+    })
+
+    console.log(`[brightspace] Connected user ${uid} as ${userInfo.firstName} ${userInfo.lastName} (${userInfo.uniqueName})`)
+    res.json({ ok: true, userName: `${userInfo.firstName} ${userInfo.lastName}` })
+  } catch (e) {
+    console.error('[brightspace] Connect error:', e)
+    if (e.message === 'BRIGHTSPACE_SESSION_EXPIRED') {
+      return res.json({ ok: false, error: 'Session cookie is expired. Log into Brightspace again and get a fresh cookie.' })
+    }
+    res.json({ ok: false, error: e.message })
+  }
+})
+
+// Disconnect Brightspace
+app.post('/api/brightspace/disconnect', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    // Remove brightspace tokens
+    await db.pool.query('DELETE FROM user_tokens WHERE user_id = $1 AND provider IN ($2, $3)', [uid, 'brightspace', 'brightspace_sync'])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Manual sync trigger
+app.post('/api/sync', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const tokens = await db.getTokens(uid, 'brightspace')
+    if (!tokens?.accessToken) {
+      return res.json({ ok: false, error: 'Brightspace not connected. Go to Settings to connect.' })
+    }
+
+    const results = await syncUserData(uid, tokens.accessToken)
+
+    if (results.errors.some(e => e.includes('SESSION_EXPIRED'))) {
+      // Clear the expired token
+      await db.pool.query("DELETE FROM user_tokens WHERE user_id = $1 AND provider = 'brightspace'", [uid])
+      return res.json({ ok: false, error: 'Brightspace session expired. Please reconnect in Settings.' })
+    }
+
+    // Broadcast updates to any connected SSE clients
+    const [grades, updates, courses] = await Promise.all([
+      db.getGrades(uid),
+      db.getUpdates(uid),
+      db.getCourses(uid),
+    ])
+    broadcast('grades', grades)
+    broadcast('updates', updates)
+    broadcast('courses', courses)
+
+    res.json({ ok: true, results })
+  } catch (e) {
+    console.error('[sync] Error:', e)
+    res.status(500).json({ ok: false, error: e.message })
+  }
 })
 
 // --- Webhook endpoints (still supported for backward compat with sync script) ---

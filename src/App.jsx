@@ -15,6 +15,7 @@ import Notes from './pages/Notes'
 import StudyTimer from './pages/StudyTimer'
 import CalendarView from './pages/CalendarView'
 import LoginPage from './pages/LoginPage'
+import SettingsPage from './pages/Settings'
 import { useAPI, useSSE } from './hooks/useData'
 import { useDarkMode } from './hooks/useDarkMode'
 
@@ -143,6 +144,7 @@ function AuthenticatedApp({ user, setAuthState, page, setPage, dark, toggleDark,
         {page === 'notes' && <Notes notes={notes} courses={courses} setNotes={setNotes} />}
         {page === 'study' && <StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} />}
         {page === 'calendar' && <CalendarView updates={updates} courses={courses} semester={semester} />}
+        {page === 'settings' && <SettingsPage user={user} />}
       </main>
     </div>
   )

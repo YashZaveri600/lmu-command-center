@@ -1,5 +1,5 @@
 import React from 'react'
-import { LayoutDashboard, Sunrise, Bell, CheckSquare, Mail, Calendar, CalendarDays, FolderOpen, Zap, Target, GraduationCap, StickyNote, Timer, Moon, Sun, Flame, LogOut } from 'lucide-react'
+import { LayoutDashboard, Sunrise, Bell, CheckSquare, Mail, Calendar, CalendarDays, FolderOpen, Zap, Target, GraduationCap, StickyNote, Timer, Moon, Sun, Flame, LogOut, Settings } from 'lucide-react'
 
 const navItems = [
   { id: 'briefing', label: 'Daily Briefing', icon: Sunrise },
@@ -15,6 +15,7 @@ const navItems = [
   { id: 'schedule', label: 'Class Schedule', icon: Calendar },
   { id: 'files', label: 'Course Files', icon: FolderOpen },
   { id: 'automations', label: 'Automations', icon: Zap },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress, user, onLogout }) {
