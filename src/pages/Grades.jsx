@@ -159,13 +159,15 @@ export default function Grades({ grades, courses, setGrades }) {
 
         courseIds.forEach(cId => {
           const sorted = [...(allGrades[cId] || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-          let runningTotal = 0
+          const weights = courseWeights[cId]?.weights || {}
           courseData[cId] = {}
+          // At each grade entry, compute the weighted course percentage using all grades up to that point
           sorted.forEach((g, i) => {
             const date = g.date || `1970-01-${String(i + 1).padStart(2, '0')}`
             allDates.add(date)
-            runningTotal += (g.score / g.maxScore) * 100
-            courseData[cId][date] = Number((runningTotal / (i + 1)).toFixed(1))
+            const gradesUpToNow = sorted.slice(0, i + 1)
+            const pct = calcCoursePercentage(gradesUpToNow, weights)
+            courseData[cId][date] = pct !== null ? Number(pct.toFixed(1)) : null
           })
         })
 
