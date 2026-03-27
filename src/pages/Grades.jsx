@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, Trash2, TrendingUp, Award } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 import WhatIfCalculator from '../components/WhatIfCalculator'
@@ -14,6 +15,8 @@ const COURSE_COLORS = {
   marketing: '#2D6A4F',
   accounting: '#7B2D8B',
 }
+
+const CHART_COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4']
 
 function letterGrade(pct) {
   if (pct >= 93) return 'A'
@@ -144,6 +147,59 @@ export default function Grades({ grades, courses, setGrades }) {
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Overall GPA</span>
           </div>
           <p className="text-5xl font-bold text-gray-900 dark:text-white">{overallGPA.toFixed(2)}</p>
+        </div>
+      )}
+
+      {/* Grade Trend Chart */}
+      {Object.keys(allGrades).some(cId => (allGrades[cId] || []).length > 1) && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={18} className="text-blue-500" />
+            <h3 className="font-semibold text-gray-900 dark:text-white">Grade Trends</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart>
+              <XAxis
+                dataKey="date"
+                type="category"
+                allowDuplicatedCategory={false}
+                tick={{ fontSize: 11 }}
+                stroke="#9CA3AF"
+              />
+              <YAxis domain={[50, 100]} tick={{ fontSize: 11 }} stroke="#9CA3AF" unit="%" />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                formatter={(value) => [`${value.toFixed(1)}%`]}
+              />
+              <Legend />
+              {Object.entries(allGrades).map(([cId, cGrades], idx) => {
+                if (!cGrades || cGrades.length < 2) return null
+                // Build running average data points sorted by date
+                const sorted = [...cGrades].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                let runningTotal = 0
+                const data = sorted.map((g, i) => {
+                  runningTotal += (g.score / g.maxScore) * 100
+                  return {
+                    date: g.date ? new Date(g.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `#${i+1}`,
+                    value: Number((runningTotal / (i + 1)).toFixed(1))
+                  }
+                })
+                const courseName = getCourseInfo(courses, cId).shortCode || cId
+                return (
+                  <Line
+                    key={cId}
+                    data={data}
+                    dataKey="value"
+                    name={courseName}
+                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                )
+              })}
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
 

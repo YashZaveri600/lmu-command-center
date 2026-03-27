@@ -533,8 +533,15 @@ OVERALL GPA: ${overallGPA}
 GRADES BY COURSE:
 ${courseGradeInfo.map(c => {
   if (!c.pct) return `${courseName(c.id)}: No grades yet`
-  return `${courseName(c.id)}: ${c.letter} (${c.pct.toFixed(1)}%, ${c.gpa?.toFixed(1)} GPA) — ${c.grades.length} graded items`
+  const weights = gradesData?.courses?.[c.id]?.weights || {}
+  const weightStr = Object.entries(weights).map(([cat, w]) => {
+    const wt = typeof w === 'number' ? w * 100 : (w?.weight != null ? w.weight * 100 : 0)
+    return `${cat}: ${wt.toFixed(0)}%`
+  }).join(', ')
+  return `${courseName(c.id)}: ${c.letter} (${c.pct.toFixed(1)}%, ${c.gpa?.toFixed(1)} GPA) — ${c.grades.length} graded items. Weights: ${weightStr || 'equal'}`
 }).join('\n')}
+
+GPA SCALE: A=4.0, A-=3.7, B+=3.3, B=3.0, B-=2.7, C+=2.3, C=2.0. Overall GPA = average of course GPAs.
 
 PENDING TASKS (${pendingTasks.length}):
 ${pendingTasks.map(t => `- [${courseName(t.course)}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' OVERDUE' : ''}`).join('\n') || 'None'}
@@ -552,7 +559,16 @@ ${announcements.map(a => `- [${courseName(a.course)}] ${a.title}: ${(a.body || '
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 600,
-        system: `You are EduSync AI, a confident and knowledgeable university assistant. You have FULL access to this student's real grades, GPA, tasks, and announcements. Answer with authority — state facts directly, don't hedge or say "I don't have access." The GPA and letter grades provided are the real calculated values. If asked about finals or exam dates, check the announcements and tasks for clues and give your best answer. If info truly isn't in the data, suggest where they can find it (Brightspace, syllabus, professor email). Be concise (2-4 sentences). Be their go-to assistant, not a cautious disclaimer machine.`,
+        system: `You are EduSync AI, a confident and knowledgeable university assistant. You have FULL access to this student's real grades, GPA, tasks, and announcements.
+
+Rules:
+- Answer with authority. State facts directly. Never say "I don't have access" or hedge.
+- The GPA, letter grades, and weights are real calculated values — trust them.
+- If asked "what do I need on the final" or GPA simulation questions, USE the weights and current grades to calculate the exact answer. Show the math briefly.
+- If asked about finals/exam dates, check announcements and tasks for clues.
+- If info truly isn't available, suggest where to find it (Brightspace, syllabus, professor).
+- Keep responses concise (2-4 sentences unless math is needed).
+- Be their go-to assistant, not a cautious disclaimer machine.`,
         messages: [{
           role: 'user',
           content: `${context}\n\nStudent's question: ${message}`

@@ -144,7 +144,7 @@ function AuthenticatedApp({ user, setAuthState, page, setPage, dark, toggleDark,
         {page === 'grades' && <Grades grades={grades} courses={courses} setGrades={setGrades} />}
         {page === 'notes' && <Notes notes={notes} courses={courses} setNotes={setNotes} />}
         {page === 'study' && <StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} />}
-        {page === 'calendar' && <CalendarView updates={updates} courses={courses} semester={semester} />}
+        {page === 'calendar' && <CalendarView updates={updates} todos={todos} courses={courses} semester={semester} />}
         {page === 'settings' && <SettingsPage user={user} />}
       </main>
       <AiChat />

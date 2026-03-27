@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 
@@ -25,7 +25,41 @@ function getCalendarDays(year, month) {
   return days
 }
 
-export default function CalendarView({ updates, courses, semester }) {
+function generateICS(todos, updates, courses) {
+  const events = []
+
+  // Add todos with due dates
+  ;(todos || []).filter(t => t.due && !t.done).forEach(t => {
+    const courseName = courses?.find(c => c.id === t.course)?.name || t.course
+    const date = t.due.replace(/-/g, '')
+    events.push(
+      `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:${t.task}\nDESCRIPTION:${courseName} — ${t.priority} priority\nEND:VEVENT`
+    )
+  })
+
+  // Add assignment updates with dates
+  ;(updates || []).filter(u => u.date && u.type === 'assignment').forEach(u => {
+    const date = u.date.replace(/-/g, '')
+    events.push(
+      `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:${u.title}\nDESCRIPTION:${u.course}\nEND:VEVENT`
+    )
+  })
+
+  return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//EduSync//EN\nCALSCALE:GREGORIAN\n${events.join('\n')}\nEND:VCALENDAR`
+}
+
+function downloadICS(todos, updates, courses) {
+  const ics = generateICS(todos, updates, courses)
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'edusync-calendar.ics'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export default function CalendarView({ updates, todos, courses, semester }) {
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -82,9 +116,17 @@ export default function CalendarView({ updates, courses, semester }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Calendar</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Deadlines and important dates</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Calendar</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Deadlines and important dates</p>
+        </div>
+        <button
+          onClick={() => downloadICS(todos, updates, courses)}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          <Download size={16} /> Export to Calendar
+        </button>
       </div>
 
       {/* Month nav */}
