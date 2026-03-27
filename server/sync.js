@@ -126,14 +126,24 @@ export async function syncUserData(userId, cookie) {
 
     // 2. Sync each course
     for (const enrollment of activeCourses) {
-      const { appId, color } = generateAppId(enrollment.name, enrollment.code)
-      const shortCode = enrollment.code?.split('-').slice(0, 2).join('-') || appId.toUpperCase()
+      // Extract course code from name like "Spring 2026 Marketing (BCOR-3510-12)" → "BCOR-3510"
+      const codeMatch = enrollment.name.match(/\(([A-Z]{2,4}-\d{3,4}[^)]*)\)/)
+      const extractedCode = codeMatch ? codeMatch[1].split('-').slice(0, 2).join('-') : null
 
-      // Upsert course
+      // Clean course name: remove "Spring 2026" prefix and "(BCOR-3510-12)" suffix
+      const cleanName = enrollment.name
+        .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
+        .replace(/\s*\([A-Z]{2,4}-[^)]+\)\s*$/, '')
+        .trim()
+
+      const { appId, color } = generateAppId(cleanName, enrollment.code)
+      const shortCode = extractedCode || enrollment.code?.split('-').slice(0, 2).join('-') || appId.toUpperCase()
+
+      // Upsert course with clean name
       await db.upsertCourse(userId, {
         brightspaceId: enrollment.brightspaceId,
         id: appId,
-        name: enrollment.name,
+        name: cleanName,
         shortCode,
         color,
         professor: null,

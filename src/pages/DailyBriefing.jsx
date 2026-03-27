@@ -52,15 +52,23 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
   const dayAbbr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][today.getDay()]
   const todaySchedule = schedule?.days?.[dayAbbr] || []
 
-  // Due today
-  const dueToday = (updates || []).filter(u => u.date === todayStr)
+  // Due today — only assignments, not announcements
+  const dueToday = (updates || []).filter(u => u.date === todayStr && u.type === 'assignment')
 
-  // Due this week
+  // Due this week — only assignments, not announcements
   const dueThisWeek = (updates || []).filter(u => {
-    if (!u.date) return false
+    if (!u.date || u.type === 'announcement') return false
     const d = new Date(u.date + 'T00:00:00')
     return isThisWeek(d) && u.date !== todayStr
   })
+
+  // Recent announcements (for display separately)
+  const recentAnnouncements = (updates || []).filter(u => {
+    if (u.type !== 'announcement') return false
+    if (!u.date) return false
+    const d = new Date(u.date + 'T00:00:00')
+    return isThisWeek(d)
+  }).slice(0, 5)
 
   // Important emails
   const importantEmails = (emails || []).filter(e => e.important).slice(0, 5)
