@@ -262,6 +262,8 @@ export async function syncUserData(userId, cookie) {
       }
 
       // 5. Fetch assignments (dropbox folders) — these are real tasks with due dates
+      // SIMPLE RULE: due date passed = done. No fuzzy matching needed.
+      // Students either submitted or missed the deadline — either way it's not pending.
       try {
         const assignments = await brightspace.fetchAssignments(enrollment.brightspaceId, cookie)
         const now = new Date()
@@ -269,75 +271,47 @@ export async function syncUserData(userId, cookie) {
         for (const assignment of assignments) {
           if (assignment.isHidden) continue
 
-          // Parse due date
           const dueDate = assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : null
 
-          // Smart matching: check if this assignment has been graded
-          // Uses word-overlap matching since names often differ
-          // e.g. grade "Camelbak" matches assignment "Camelbak case study answers"
-          // e.g. grade "Case study 1 Ethics Harmonix" matches assignment "ETHICS / HARMONIX"
-          const assignmentNameLower = assignment.name.toLowerCase().trim()
-          const assignmentWords = assignmentNameLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
+          // No due date and no end date = skip (can't determine relevance)
+          if (!dueDate && !assignment.endDate) continue
 
-          const isGraded = [...gradedNames].some(gn => {
-            // Exact match
-            if (gn === assignmentNameLower) return true
-            // One contains the other
-            if (assignmentNameLower.includes(gn) || gn.includes(assignmentNameLower)) return true
-            // Word overlap: if 50%+ of significant words match, consider it the same
-            const gradeWords = gn.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
-            if (gradeWords.length === 0 || assignmentWords.length === 0) return false
-            const matchCount = assignmentWords.filter(w => gradeWords.some(gw => gw.includes(w) || w.includes(gw))).length
-            return matchCount >= Math.min(assignmentWords.length, gradeWords.length) * 0.5
-          })
+          const effectiveDate = dueDate || new Date(assignment.endDate).toISOString().split('T')[0]
+          const daysUntil = (new Date(effectiveDate) - now) / (1000 * 60 * 60 * 24)
 
-          // Skip assignments that are past due AND already graded
-          if (dueDate) {
-            const due = new Date(dueDate)
-            const daysPast = (now - due) / (1000 * 60 * 60 * 24)
-            // Keep recent past-due items (7 days) even if not graded, but skip old graded ones
-            if (daysPast > 7 && isGraded) continue
-            // Skip very old assignments regardless
-            if (daysPast > 30) continue
-          }
+          // Skip anything more than 60 days in the future (not relevant yet)
+          if (daysUntil > 60) continue
 
-          // Check if submitted on Brightspace (for non-graded items)
-          let submitted = isGraded
-          if (!submitted) {
-            submitted = await brightspace.fetchMySubmissions(
-              enrollment.brightspaceId,
-              assignment.id,
-              cookie
-            )
-          }
+          // Due date passed = done. Period.
+          const isDone = daysUntil < 0
 
-          // Determine priority based on due date
+          // Only show upcoming tasks (due in the future or within last 2 days for grace period)
+          // Skip old stuff entirely — no one needs to see assignments from weeks ago
+          if (daysUntil < -2) continue
+
+          // Priority
           let priority = 'medium'
-          if (dueDate) {
-            const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
-            if (daysUntil <= 2) priority = 'high'
-            else if (daysUntil > 7) priority = 'low'
-          }
+          if (daysUntil <= 2 && daysUntil >= 0) priority = 'high'
+          else if (daysUntil > 7) priority = 'low'
 
-          // Upsert as synced todo
           await db.upsertSyncedTodo(userId, {
             course: appId,
             task: assignment.name,
             due: dueDate,
-            done: submitted,
+            done: isDone,
             priority,
             source: 'brightspace',
             sourceId: `bs-assignment-${enrollment.brightspaceId}-${assignment.id}`,
           })
           results.tasks++
-          if (submitted) results.completed++
+          if (isDone) results.completed++
         }
       } catch (e) {
         console.error(`[sync] Error syncing assignments for ${appId}:`, e.message)
         results.errors.push(`${appId} assignments: ${e.message}`)
       }
 
-      // 6. Fetch quizzes — also real tasks
+      // 6. Fetch quizzes — same simple rule: past due = done
       try {
         const quizzes = await brightspace.fetchQuizzes(enrollment.brightspaceId, cookie)
         const now = new Date()
@@ -346,37 +320,23 @@ export async function syncUserData(userId, cookie) {
           if (!quiz.isActive) continue
 
           const dueDate = quiz.dueDate ? new Date(quiz.dueDate).toISOString().split('T')[0] : null
+          if (!dueDate) continue // quizzes without due dates aren't actionable
 
-          // Skip quizzes long past due
-          if (dueDate) {
-            const daysPast = (now - new Date(dueDate)) / (1000 * 60 * 60 * 24)
-            if (daysPast > 7) continue
-          }
+          const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
+          if (daysUntil < -2) continue  // old quizzes, skip
+          if (daysUntil > 60) continue  // far future, skip
+
+          const isDone = daysUntil < 0
 
           let priority = 'medium'
-          if (dueDate) {
-            const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
-            if (daysUntil <= 2) priority = 'high'
-            else if (daysUntil > 7) priority = 'low'
-          }
-
-          // Check if already graded (means they took it)
-          const quizNameLower = quiz.name.toLowerCase().trim()
-          const quizWords = quizNameLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
-          const isQuizGraded = [...gradedNames].some(gn => {
-            if (gn === quizNameLower) return true
-            if (quizNameLower.includes(gn) || gn.includes(quizNameLower)) return true
-            const gradeWords = gn.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2)
-            if (gradeWords.length === 0 || quizWords.length === 0) return false
-            const matchCount = quizWords.filter(w => gradeWords.some(gw => gw.includes(w) || w.includes(gw))).length
-            return matchCount >= Math.min(quizWords.length, gradeWords.length) * 0.5
-          })
+          if (daysUntil <= 2 && daysUntil >= 0) priority = 'high'
+          else if (daysUntil > 7) priority = 'low'
 
           await db.upsertSyncedTodo(userId, {
             course: appId,
             task: `Quiz: ${quiz.name}`,
             due: dueDate,
-            done: isQuizGraded,
+            done: isDone,
             priority,
             source: 'brightspace',
             sourceId: `bs-quiz-${enrollment.brightspaceId}-${quiz.id}`,
@@ -405,6 +365,16 @@ export async function syncUserData(userId, cookie) {
         console.error('[sync] AI task extraction failed:', e.message)
         // Non-critical — AI is an enhancement, not required
       }
+    }
+
+    // Clean up old synced todos: remove BS-synced tasks that are past due by 3+ days
+    try {
+      await db.pool.query(
+        `DELETE FROM todos WHERE user_id = $1 AND source = 'brightspace' AND due < NOW() - INTERVAL '3 days'`,
+        [userId]
+      )
+    } catch (e) {
+      console.log('[sync] Cleanup note:', e.message)
     }
 
     // Update last sync time
