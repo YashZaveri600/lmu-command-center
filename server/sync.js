@@ -428,4 +428,112 @@ export async function syncUserData(userId, cookie) {
   return results
 }
 
-export default { syncUserData }
+// ─── Microsoft Graph Email Sync ───
+// Fetches recent emails and matches them to courses by professor/subject
+export async function syncEmails(userId, msAccessToken, courses) {
+  const results = { synced: 0, errors: [] }
+
+  try {
+    // Fetch recent emails (last 30 days, max 100)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const graphUrl = `https://graph.microsoft.com/v1.0/me/messages?` +
+      `$top=100&` +
+      `$select=subject,from,receivedDateTime,bodyPreview,importance,isRead&` +
+      `$orderby=receivedDateTime desc&` +
+      `$filter=receivedDateTime ge ${thirtyDaysAgo}`
+
+    const res = await fetch(graphUrl, {
+      headers: { Authorization: `Bearer ${msAccessToken}` },
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      if (res.status === 401) {
+        results.errors.push('Microsoft token expired — re-login needed for Mail.Read scope')
+      } else if (res.status === 403) {
+        results.errors.push('Mail.Read permission not granted — re-login to grant email access')
+      } else {
+        results.errors.push(`Graph API error ${res.status}: ${err.slice(0, 200)}`)
+      }
+      return results
+    }
+
+    const data = await res.json()
+    const messages = data.value || []
+
+    if (messages.length === 0) return results
+
+    // Build matchers from course data
+    // Match emails to courses by: professor name, course name keywords, or .edu sender
+    const courseMatchers = courses.map(c => ({
+      id: c.id,
+      name: c.name?.toLowerCase() || '',
+      professor: c.professor?.toLowerCase() || '',
+      // Extract last name from professor for matching
+      profLastName: c.professor ? c.professor.split(/\s+/).pop()?.toLowerCase() : '',
+    }))
+
+    const emails = messages
+      .filter(msg => {
+        // Only keep emails from .edu addresses (professor/university emails)
+        const senderEmail = msg.from?.emailAddress?.address || ''
+        return senderEmail.endsWith('.edu')
+      })
+      .map(msg => {
+        const senderName = msg.from?.emailAddress?.name || ''
+        const senderEmail = msg.from?.emailAddress?.address || ''
+        const subject = msg.subject || '(No subject)'
+        const subjectLower = subject.toLowerCase()
+        const senderLower = senderName.toLowerCase()
+
+        // Try to match to a course
+        let matchedCourse = null
+
+        // 1. Match by professor name
+        for (const cm of courseMatchers) {
+          if (cm.professor && senderLower.includes(cm.professor)) {
+            matchedCourse = cm.id
+            break
+          }
+          if (cm.profLastName && cm.profLastName.length > 2 && senderLower.includes(cm.profLastName)) {
+            matchedCourse = cm.id
+            break
+          }
+        }
+
+        // 2. Match by course name in subject
+        if (!matchedCourse) {
+          for (const cm of courseMatchers) {
+            if (cm.name && cm.name.length > 3 && subjectLower.includes(cm.name)) {
+              matchedCourse = cm.id
+              break
+            }
+          }
+        }
+
+        return {
+          course: matchedCourse,
+          subject,
+          from: senderName || senderEmail,
+          fromEmail: senderEmail,
+          date: msg.receivedDateTime ? new Date(msg.receivedDateTime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          preview: (msg.bodyPreview || '').slice(0, 500),
+          important: msg.importance === 'high',
+        }
+      })
+
+    if (emails.length > 0) {
+      await db.upsertEmails(userId, emails)
+      results.synced = emails.length
+      console.log(`[sync] Synced ${emails.length} emails from Microsoft Graph (${emails.filter(e => e.course).length} matched to courses)`)
+    }
+
+  } catch (e) {
+    console.error('[sync] Email sync failed:', e.message)
+    results.errors.push(e.message)
+  }
+
+  return results
+}
+
+export default { syncUserData, syncEmails }

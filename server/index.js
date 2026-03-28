@@ -8,7 +8,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import db from './db/index.js'
 import brightspace from './brightspace.js'
-import { syncUserData } from './sync.js'
+import { syncUserData, syncEmails } from './sync.js'
 import { generateDailyBriefing, whatDoINeed } from './ai.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -43,7 +43,54 @@ const MS_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET
 const MS_REDIRECT_URI = `${APP_URL}/auth/microsoft/callback`
 const MS_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
 const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-const MS_SCOPES = 'openid profile email User.Read'
+const MS_SCOPES = 'openid profile email User.Read Mail.Read'
+
+// --- Microsoft token refresh ---
+// Access tokens expire after ~1 hour. Use the refresh token to get a new one.
+export async function refreshMicrosoftToken(userId) {
+  const tokens = await db.getTokens(userId, 'microsoft')
+  if (!tokens) return null
+
+  // If token hasn't expired yet, return it
+  if (tokens.expiresAt && new Date(tokens.expiresAt) > new Date()) {
+    return tokens.accessToken
+  }
+
+  // No refresh token = can't refresh, user needs to re-login
+  if (!tokens.refreshToken) return null
+
+  try {
+    const res = await fetch(MS_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: MS_CLIENT_ID,
+        client_secret: MS_CLIENT_SECRET,
+        refresh_token: tokens.refreshToken,
+        grant_type: 'refresh_token',
+        scope: MS_SCOPES,
+      }),
+    })
+    const data = await res.json()
+    if (data.error) {
+      console.error('[auth] Token refresh failed:', data.error_description)
+      return null
+    }
+
+    // Save updated tokens
+    await db.saveTokens(userId, 'microsoft', {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || tokens.refreshToken,
+      expiresAt: new Date(Date.now() + data.expires_in * 1000),
+      scopes: MS_SCOPES,
+    })
+
+    return data.access_token
+  } catch (e) {
+    console.error('[auth] Token refresh error:', e.message)
+    return null
+  }
+}
 
 // --- Auth routes ---
 
@@ -396,19 +443,33 @@ app.post('/api/sync', async (req, res) => {
       return res.json({ ok: false, error: 'Brightspace session expired. Please reconnect in Settings.' })
     }
 
+    // Sync emails from Microsoft Graph (independent of Brightspace)
+    let emailResults = null
+    try {
+      const msToken = await refreshMicrosoftToken(uid)
+      if (msToken) {
+        const courses = await db.getCourses(uid)
+        emailResults = await syncEmails(uid, msToken, courses)
+      }
+    } catch (e) {
+      console.log('[sync] Email sync note:', e.message)
+    }
+
     // Broadcast updates to any connected SSE clients
-    const [grades, updates, courses, todos] = await Promise.all([
+    const [grades, updates, courses, todos, emails] = await Promise.all([
       db.getGrades(uid),
       db.getUpdates(uid),
       db.getCourses(uid),
       db.getTodos(uid),
+      db.getEmails(uid),
     ])
     broadcast('grades', grades)
     broadcast('updates', updates)
     broadcast('courses', courses)
     broadcast('todos', todos)
+    broadcast('emails', emails)
 
-    res.json({ ok: true, results })
+    res.json({ ok: true, results, emailResults })
   } catch (e) {
     console.error('[sync] Error:', e)
     res.status(500).json({ ok: false, error: e.message })
@@ -721,6 +782,18 @@ async function autoSyncAll() {
       try {
         const results = await syncUserData(row.user_id, row.access_token)
         console.log(`[auto-sync] User ${row.user_id}: ${results.courses} courses, ${results.grades} grades, ${results.tasks || 0} tasks`)
+
+        // Also sync Microsoft emails
+        try {
+          const msToken = await refreshMicrosoftToken(row.user_id)
+          if (msToken) {
+            const courses = await db.getCourses(row.user_id)
+            const emailResults = await syncEmails(row.user_id, msToken, courses)
+            console.log(`[auto-sync] User ${row.user_id}: ${emailResults.synced} emails synced`)
+          }
+        } catch (e) {
+          console.log(`[auto-sync] Email sync note for user ${row.user_id}:`, e.message)
+        }
       } catch (e) {
         console.error(`[auto-sync] User ${row.user_id} failed:`, e.message)
       }
