@@ -43,7 +43,8 @@ const MS_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET
 const MS_REDIRECT_URI = `${APP_URL}/auth/microsoft/callback`
 const MS_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
 const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-const MS_SCOPES = 'openid profile email User.Read Mail.Read'
+const MS_SCOPES = 'openid profile email User.Read'
+const MS_SCOPES_WITH_EMAIL = 'openid profile email User.Read Mail.Read'
 
 // --- Microsoft token refresh ---
 // Access tokens expire after ~1 hour. Use the refresh token to get a new one.
@@ -96,20 +97,27 @@ export async function refreshMicrosoftToken(userId) {
 
 // Start Microsoft login
 app.get('/auth/microsoft', (req, res) => {
+  // If ?email=1, request Mail.Read scope (opt-in for email sync)
+  const scopes = req.query.email === '1' ? MS_SCOPES_WITH_EMAIL : MS_SCOPES
+  const state = req.query.email === '1' ? 'email' : ''
   const params = new URLSearchParams({
     client_id: MS_CLIENT_ID,
     response_type: 'code',
     redirect_uri: MS_REDIRECT_URI,
-    scope: MS_SCOPES,
+    scope: scopes,
     response_mode: 'query',
-    prompt: 'select_account',
+    prompt: req.query.email === '1' ? 'consent' : 'select_account',
+    ...(state && { state }),
   })
   res.redirect(`${MS_AUTH_URL}?${params}`)
 })
 
 // Microsoft callback — exchange code for tokens, create/find user
 app.get('/auth/microsoft/callback', async (req, res) => {
-  const { code, error } = req.query
+  const { code, error, state } = req.query
+  const requestedEmail = state === 'email'
+  const scopes = requestedEmail ? MS_SCOPES_WITH_EMAIL : MS_SCOPES
+
   if (error || !code) {
     console.error('[auth] Microsoft login error:', error || 'no code')
     return res.redirect('/?auth_error=1')
@@ -126,7 +134,7 @@ app.get('/auth/microsoft/callback', async (req, res) => {
         code,
         redirect_uri: MS_REDIRECT_URI,
         grant_type: 'authorization_code',
-        scope: MS_SCOPES,
+        scope: scopes,
       }),
     })
 
@@ -154,13 +162,13 @@ app.get('/auth/microsoft/callback', async (req, res) => {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token || null,
       expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-      scopes: MS_SCOPES,
+      scopes: scopes,
     })
 
     // Set session
     req.session.userId = userId
     req.session.save(() => {
-      res.redirect('/')
+      res.redirect(requestedEmail ? '/?email_granted=1' : '/')
     })
   } catch (e) {
     console.error('[auth] Callback error:', e)
