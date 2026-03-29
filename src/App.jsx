@@ -25,6 +25,7 @@ const API = import.meta.env.VITE_API_URL || ''
 export default function App() {
   const [authState, setAuthState] = useState('loading') // 'loading' | 'authenticated' | 'unauthenticated'
   const [user, setUser] = useState(null)
+  const [emailEnabled, setEmailEnabled] = useState(false)
   const [page, setPage] = useState('briefing')
   const [dark, toggleDark] = useDarkMode()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -37,6 +38,7 @@ export default function App() {
         if (data.authenticated) {
           setAuthState('authenticated')
           setUser(data.user)
+          setEmailEnabled(data.emailEnabled || false)
         } else {
           setAuthState('unauthenticated')
         }
@@ -145,7 +147,7 @@ function AuthenticatedApp({ user, setAuthState, page, setPage, dark, toggleDark,
         {page === 'notes' && <Notes notes={notes} courses={courses} setNotes={setNotes} />}
         {page === 'study' && <StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} />}
         {page === 'calendar' && <CalendarView updates={updates} todos={todos} courses={courses} semester={semester} />}
-        {page === 'settings' && <SettingsPage user={user} />}
+        {page === 'settings' && <SettingsPage user={user} emailEnabled={emailEnabled} />}
       </main>
       <AiChat />
     </div>

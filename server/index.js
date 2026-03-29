@@ -185,7 +185,10 @@ app.get('/api/auth/me', async (req, res) => {
   if (!user) {
     return res.json({ authenticated: false })
   }
-  res.json({ authenticated: true, user })
+  // Include email scope status
+  const msTokens = await db.getTokens(req.session.userId, 'microsoft')
+  const emailEnabled = msTokens?.scopes?.includes('Mail.Read') || false
+  res.json({ authenticated: true, user, emailEnabled })
 })
 
 // Logout
