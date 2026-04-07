@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, Zap, Bot, BookOpen } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import { patchTodo, createTodo, deleteTodo } from '../hooks/useData'
+
+const API = import.meta.env.VITE_API_URL || ''
 
 export default function Todos({ todos, courses, setTodos }) {
   const [showAdd, setShowAdd] = useState(false)
@@ -9,6 +11,19 @@ export default function Todos({ todos, courses, setTodos }) {
   const [newCourse, setNewCourse] = useState('managing')
   const [newDue, setNewDue] = useState('')
   const [newPriority, setNewPriority] = useState('medium')
+  const checkedRef = useRef(false)
+
+  // Auto-check Brightspace submissions when page loads
+  useEffect(() => {
+    if (checkedRef.current) return
+    checkedRef.current = true
+    fetch(`${API}/api/todos/check-submissions`, { method: 'POST', credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.updated > 0) console.log(`[todos] ${data.updated} tasks auto-completed from Brightspace`)
+      })
+      .catch(() => {})
+  }, [])
 
   if (!todos || !courses) return null
 

@@ -252,6 +252,48 @@ app.get('/api/todos', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Quick submission check — only checks pending Brightspace tasks for completion
+app.post('/api/todos/check-submissions', async (req, res) => {
+  try {
+    const uid = getUserId(req)
+    const tokens = await db.getTokens(uid, 'brightspace')
+    if (!tokens?.access_token) return res.json({ ok: true, checked: 0, updated: 0 })
+
+    const cookie = tokens.access_token
+    // Get only pending brightspace tasks
+    const { rows: pendingTasks } = await db.pool.query(
+      `SELECT id, source_id FROM todos WHERE user_id = $1 AND source = 'brightspace' AND done = false AND source_id IS NOT NULL`,
+      [uid]
+    )
+    if (pendingTasks.length === 0) return res.json({ ok: true, checked: 0, updated: 0 })
+
+    let updated = 0
+    for (const task of pendingTasks) {
+      // source_id format: bs-assignment-{courseId}-{folderId} or bs-quiz-{courseId}-{quizId}
+      const parts = task.source_id.split('-')
+      if (parts[1] === 'assignment' && parts.length >= 4) {
+        const courseId = parts[2]
+        const folderId = parts.slice(3).join('-')
+        const submitted = await brightspace.fetchMySubmissions(courseId, folderId, cookie)
+        if (submitted) {
+          await db.pool.query('UPDATE todos SET done = true WHERE id = $1 AND user_id = $2', [task.id, uid])
+          updated++
+        }
+      }
+    }
+
+    if (updated > 0) {
+      const todos = await db.getTodos(uid)
+      broadcast('todos', todos)
+    }
+
+    res.json({ ok: true, checked: pendingTasks.length, updated })
+  } catch (e) {
+    console.error('[check-submissions]', e.message)
+    res.json({ ok: true, checked: 0, updated: 0 })
+  }
+})
+
 app.get('/api/updates', async (req, res) => {
   try { res.json(await db.getUpdates(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
@@ -815,13 +857,13 @@ async function autoSyncAll() {
   }
 }
 
-const TWO_HOURS = 2 * 60 * 60 * 1000
-setInterval(autoSyncAll, TWO_HOURS)
+const FIFTEEN_MIN = 15 * 60 * 1000
+setInterval(autoSyncAll, FIFTEEN_MIN)
 // Also run first sync 30 seconds after startup (let DB connect first)
 setTimeout(autoSyncAll, 30_000)
 
 const port = process.env.PORT || PORT
 app.listen(port, () => {
   console.log(`\n  EduSync server running at http://localhost:${port}`)
-  console.log(`  Auto-sync enabled: every 2 hours`)
+  console.log(`  Auto-sync enabled: every 15 minutes`)
 })
