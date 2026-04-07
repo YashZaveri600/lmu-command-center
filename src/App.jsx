@@ -65,10 +65,10 @@ export default function App() {
   }
 
   // Authenticated — render the app
-  return <AuthenticatedApp user={user} setAuthState={setAuthState} page={page} setPage={setPage} dark={dark} toggleDark={toggleDark} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+  return <AuthenticatedApp user={user} emailEnabled={emailEnabled} setAuthState={setAuthState} page={page} setPage={setPage} dark={dark} toggleDark={toggleDark} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
 }
 
-function AuthenticatedApp({ user, setAuthState, page, setPage, dark, toggleDark, mobileMenuOpen, setMobileMenuOpen }) {
+function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dark, toggleDark, mobileMenuOpen, setMobileMenuOpen }) {
   const { data: courses, setData: setCourses } = useAPI('courses')
   const { data: updates, setData: setUpdates } = useAPI('updates')
   const { data: todos, setData: setTodos } = useAPI('todos')
