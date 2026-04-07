@@ -269,16 +269,39 @@ app.post('/api/todos/check-submissions', async (req, res) => {
 
     let updated = 0
     for (const task of pendingTasks) {
-      // source_id format: bs-assignment-{courseId}-{folderId} or bs-quiz-{courseId}-{quizId}
+      // source_id formats:
+      //   bs-assignment-{courseId}-{folderId}
+      //   bs-quiz-{courseId}-{quizId}
+      //   bs-discussion-{courseId}-{topicId}
       const parts = task.source_id.split('-')
+      let done = false
+
       if (parts[1] === 'assignment' && parts.length >= 4) {
         const courseId = parts[2]
         const folderId = parts.slice(3).join('-')
-        const submitted = await brightspace.fetchMySubmissions(courseId, folderId, cookie)
-        if (submitted) {
-          await db.pool.query('UPDATE todos SET done = true WHERE id = $1 AND user_id = $2', [task.id, uid])
-          updated++
-        }
+        done = await brightspace.fetchMySubmissions(courseId, folderId, cookie)
+      } else if (parts[1] === 'quiz' && parts.length >= 4) {
+        const courseId = parts[2]
+        const quizId = parts.slice(3).join('-')
+        done = await brightspace.fetchQuizAttempts(courseId, quizId, cookie)
+      } else if (parts[1] === 'discussion' && parts.length >= 4) {
+        // For discussions we need the forumId too — fetch topic info
+        // The quick check just looks for any posts by the user
+        const courseId = parts[2]
+        const topicId = parts.slice(3).join('-')
+        // We don't have forumId stored, so try fetching forums to find it
+        try {
+          const discussions = await brightspace.fetchDiscussions(courseId, cookie)
+          const topic = discussions.find(d => String(d.id) === topicId)
+          if (topic) {
+            done = await brightspace.fetchMyDiscussionPosts(courseId, topic.forumId, topicId, cookie)
+          }
+        } catch (e) { /* skip if forums fail */ }
+      }
+
+      if (done) {
+        await db.pool.query('UPDATE todos SET done = true WHERE id = $1 AND user_id = $2', [task.id, uid])
+        updated++
       }
     }
 

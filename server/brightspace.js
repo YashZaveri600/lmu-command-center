@@ -243,6 +243,55 @@ export async function fetchQuizzes(courseId, cookie) {
   }
 }
 
+// ─── Get discussion forums and topics for a course ───
+export async function fetchDiscussions(courseId, cookie) {
+  try {
+    const forums = await bsFetch(`/d2l/api/le/1.0/${courseId}/discussions/forums/`, cookie)
+    const topics = []
+    for (const forum of (forums || [])) {
+      try {
+        const forumTopics = await bsFetch(`/d2l/api/le/1.0/${courseId}/discussions/forums/${forum.ForumId}/topics/`, cookie)
+        for (const topic of (forumTopics || [])) {
+          if (topic.IsHidden) continue
+          topics.push({
+            id: topic.TopicId,
+            forumId: forum.ForumId,
+            name: topic.Name,
+            dueDate: topic.EndDate || null,
+            forumName: forum.Name,
+          })
+        }
+      } catch (e) {
+        // Some forums may not be accessible
+      }
+    }
+    return topics
+  } catch (e) {
+    console.log(`[brightspace] No discussions for course ${courseId}: ${e.message}`)
+    return []
+  }
+}
+
+// ─── Check my posts in a discussion topic ───
+export async function fetchMyDiscussionPosts(courseId, forumId, topicId, cookie) {
+  try {
+    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/discussions/forums/${forumId}/topics/${topicId}/posts/my`, cookie)
+    return (data || []).length > 0
+  } catch (e) {
+    return false
+  }
+}
+
+// ─── Check quiz attempts ───
+export async function fetchQuizAttempts(courseId, quizId, cookie) {
+  try {
+    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/quizzes/${quizId}/attempts/`, cookie)
+    return (data || []).length > 0
+  } catch (e) {
+    return false
+  }
+}
+
 // ─── Get announcements/news for a course ───
 export async function fetchAnnouncements(courseId, cookie) {
   try {
@@ -283,6 +332,9 @@ export default {
   fetchAssignments,
   fetchMySubmissions,
   fetchQuizzes,
+  fetchQuizAttempts,
+  fetchDiscussions,
+  fetchMyDiscussionPosts,
   fetchAnnouncements,
   fetchWhoAmI,
 }

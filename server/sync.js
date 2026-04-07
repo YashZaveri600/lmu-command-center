@@ -319,7 +319,7 @@ export async function syncUserData(userId, cookie) {
         results.errors.push(`${appId} assignments: ${e.message}`)
       }
 
-      // 6. Fetch quizzes — same simple rule: past due = done
+      // 6. Fetch quizzes — check actual attempts instead of just grade name matching
       try {
         const quizzes = await brightspace.fetchQuizzes(enrollment.brightspaceId, cookie)
         const now = new Date()
@@ -333,11 +333,14 @@ export async function syncUserData(userId, cookie) {
           const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
           if (daysUntil > 60) continue
 
-          // Quizzes: check if graded (means they took it)
-          const quizNameLower = quiz.name.toLowerCase().trim()
-          const isDone = [...gradedNames].some(gn =>
-            gn === quizNameLower || gn.includes(quizNameLower) || quizNameLower.includes(gn)
-          )
+          // Check actual quiz attempts first, fall back to grade name matching
+          let isDone = await brightspace.fetchQuizAttempts(enrollment.brightspaceId, quiz.id, cookie)
+          if (!isDone) {
+            const quizNameLower = quiz.name.toLowerCase().trim()
+            isDone = [...gradedNames].some(gn =>
+              gn === quizNameLower || gn.includes(quizNameLower) || quizNameLower.includes(gn)
+            )
+          }
           const isOverdue = daysUntil < 0 && !isDone
 
           if (daysUntil < -7 && isDone) continue
@@ -359,7 +362,44 @@ export async function syncUserData(userId, cookie) {
         }
       } catch (e) {
         console.error(`[sync] Error syncing quizzes for ${appId}:`, e.message)
-        // Quizzes endpoint may not be available — not a critical error
+      }
+
+      // 6b. Fetch discussion topics with due dates
+      try {
+        const discussions = await brightspace.fetchDiscussions(enrollment.brightspaceId, cookie)
+        const now = new Date()
+
+        for (const topic of discussions) {
+          if (!topic.dueDate) continue
+
+          const dueDate = new Date(topic.dueDate).toISOString().split('T')[0]
+          const daysUntil = (new Date(dueDate) - now) / (1000 * 60 * 60 * 24)
+          if (daysUntil > 60) continue
+
+          const isDone = await brightspace.fetchMyDiscussionPosts(
+            enrollment.brightspaceId, topic.forumId, topic.id, cookie
+          )
+          const isOverdue = daysUntil < 0 && !isDone
+
+          if (daysUntil < -7 && isDone) continue
+
+          let priority = 'medium'
+          if (isOverdue || (daysUntil <= 2 && daysUntil >= 0)) priority = 'high'
+          else if (daysUntil > 7) priority = 'low'
+
+          await db.upsertSyncedTodo(userId, {
+            course: appId,
+            task: `Discussion: ${topic.name}`,
+            due: dueDate,
+            done: isDone,
+            priority,
+            source: 'brightspace',
+            sourceId: `bs-discussion-${enrollment.brightspaceId}-${topic.id}`,
+          })
+          results.tasks++
+        }
+      } catch (e) {
+        console.error(`[sync] Error syncing discussions for ${appId}:`, e.message)
       }
     }
 
