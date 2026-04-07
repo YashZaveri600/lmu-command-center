@@ -87,6 +87,14 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
 
   useSSE(handleSSE)
 
+  // Auto-check Brightspace submissions on load + every 2 min while app is open
+  useEffect(() => {
+    const check = () => fetch(`${API}/api/todos/check-submissions`, { method: 'POST', credentials: 'include' }).catch(() => {})
+    check()
+    const interval = setInterval(check, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   const urgentCount = updates ? updates.filter(u => u.urgency === 'urgent').length : 0
   const streak = studySessions?.streaks?.current || 0
 
