@@ -252,7 +252,7 @@ app.get('/api/todos', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-// Quick submission check — only checks pending Brightspace tasks for completion
+// Quick submission check — checks pending Brightspace tasks for completion
 app.post('/api/todos/check-submissions', async (req, res) => {
   try {
     const uid = getUserId(req)
@@ -260,43 +260,71 @@ app.post('/api/todos/check-submissions', async (req, res) => {
     if (!tokens?.access_token) return res.json({ ok: true, checked: 0, updated: 0 })
 
     const cookie = tokens.access_token
-    // Get only pending brightspace tasks
+
+    // Get ALL pending brightspace tasks (with or without source_id)
     const { rows: pendingTasks } = await db.pool.query(
-      `SELECT id, source_id FROM todos WHERE user_id = $1 AND source = 'brightspace' AND done = false AND source_id IS NOT NULL`,
+      `SELECT id, source_id, task, course_app_id FROM todos WHERE user_id = $1 AND source = 'brightspace' AND done = false`,
       [uid]
     )
     if (pendingTasks.length === 0) return res.json({ ok: true, checked: 0, updated: 0 })
 
+    // For tasks WITH source_id, check directly
+    // For tasks WITHOUT source_id, we need to look up assignments by course
     let updated = 0
+    const courseAssignmentCache = {} // courseAppId -> assignments list
+
     for (const task of pendingTasks) {
-      // source_id formats:
-      //   bs-assignment-{courseId}-{folderId}
-      //   bs-quiz-{courseId}-{quizId}
-      //   bs-discussion-{courseId}-{topicId}
-      const parts = task.source_id.split('-')
       let done = false
 
-      if (parts[1] === 'assignment' && parts.length >= 4) {
-        const courseId = parts[2]
-        const folderId = parts.slice(3).join('-')
-        done = await brightspace.fetchMySubmissions(courseId, folderId, cookie)
-      } else if (parts[1] === 'quiz' && parts.length >= 4) {
-        const courseId = parts[2]
-        const quizId = parts.slice(3).join('-')
-        done = await brightspace.fetchQuizAttempts(courseId, quizId, cookie)
-      } else if (parts[1] === 'discussion' && parts.length >= 4) {
-        // For discussions we need the forumId too — fetch topic info
-        // The quick check just looks for any posts by the user
-        const courseId = parts[2]
-        const topicId = parts.slice(3).join('-')
-        // We don't have forumId stored, so try fetching forums to find it
+      if (task.source_id) {
+        const parts = task.source_id.split('-')
+        if (parts[1] === 'assignment' && parts.length >= 4) {
+          done = await brightspace.fetchMySubmissions(parts[2], parts.slice(3).join('-'), cookie)
+        } else if (parts[1] === 'quiz' && parts.length >= 4) {
+          done = await brightspace.fetchQuizAttempts(parts[2], parts.slice(3).join('-'), cookie)
+        } else if (parts[1] === 'discussion' && parts.length >= 4) {
+          try {
+            const discussions = await brightspace.fetchDiscussions(parts[2], cookie)
+            const topic = discussions.find(d => String(d.id) === parts.slice(3).join('-'))
+            if (topic) done = await brightspace.fetchMyDiscussionPosts(parts[2], topic.forumId, topic.id, cookie)
+          } catch (e) { /* skip */ }
+        }
+      } else {
+        // No source_id — look up by matching task name to Brightspace assignments
         try {
-          const discussions = await brightspace.fetchDiscussions(courseId, cookie)
-          const topic = discussions.find(d => String(d.id) === topicId)
-          if (topic) {
-            done = await brightspace.fetchMyDiscussionPosts(courseId, topic.forumId, topicId, cookie)
+          // Get the brightspace course ID from user's courses
+          const { rows: courseRows } = await db.pool.query(
+            `SELECT brightspace_id FROM courses WHERE user_id = $1 AND app_id = $2`,
+            [uid, task.course_app_id]
+          )
+          if (courseRows.length > 0 && courseRows[0].brightspace_id) {
+            const bsCourseId = courseRows[0].brightspace_id
+            // Cache assignments per course
+            if (!courseAssignmentCache[bsCourseId]) {
+              const assignments = await brightspace.fetchAssignments(bsCourseId, cookie)
+              courseAssignmentCache[bsCourseId] = assignments
+            }
+            // Find matching assignment by name
+            const taskName = task.task.replace(/^(Quiz: |Discussion: )/, '').trim().toLowerCase()
+            const match = courseAssignmentCache[bsCourseId].find(a =>
+              a.name.trim().toLowerCase() === taskName ||
+              taskName.includes(a.name.trim().toLowerCase()) ||
+              a.name.trim().toLowerCase().includes(taskName)
+            )
+            if (match) {
+              done = await brightspace.fetchMySubmissions(bsCourseId, match.id, cookie)
+              // Also backfill the source_id for future fast lookups
+              if (done || !task.source_id) {
+                await db.pool.query(
+                  `UPDATE todos SET source_id = $1 WHERE id = $2 AND user_id = $3`,
+                  [`bs-assignment-${bsCourseId}-${match.id}`, task.id, uid]
+                )
+              }
+            }
           }
-        } catch (e) { /* skip if forums fail */ }
+        } catch (e) {
+          console.log(`[check-submissions] Lookup failed for "${task.task}":`, e.message)
+        }
       }
 
       if (done) {
