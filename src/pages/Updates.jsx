@@ -1,16 +1,11 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState } from 'react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
 
-const BS_ORIGIN = 'https://brightspace.lmu.edu'
-
-// Fix relative Brightspace links and make all links open in new tab
-function fixBodyHtml(html) {
+// Strip links from Brightspace HTML but keep the text content
+function cleanBodyHtml(html) {
   if (!html) return ''
-  return html
-    .replace(/href=["']\/d2l\//g, `href="${BS_ORIGIN}/d2l/`)
-    .replace(/src=["']\/d2l\//g, `src="${BS_ORIGIN}/d2l/`)
-    .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
+  return html.replace(/<a\b[^>]*>(.*?)<\/a>/gi, '$1')
 }
 
 export default function Updates({ updates, courses }) {
@@ -95,26 +90,11 @@ export default function Updates({ updates, courses }) {
                 <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
                   {item.body ? (
                     <div
-                      className="mt-3 text-sm text-gray-600 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none [&_a]:text-blue-500 [&_a]:underline [&_img]:rounded [&_img]:max-w-full"
-                      dangerouslySetInnerHTML={{ __html: fixBodyHtml(item.body) }}
-                      onClick={e => { if (e.target.tagName === 'A') e.stopPropagation() }}
+                      className="mt-3 text-sm text-gray-600 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none [&_img]:rounded [&_img]:max-w-full"
+                      dangerouslySetInnerHTML={{ __html: cleanBodyHtml(item.body) }}
                     />
                   ) : (
                     <p className="mt-3 text-sm text-gray-400 italic">No content available.</p>
-                  )}
-                  {item.source_url && (
-                    <a
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-blue-500 hover:text-blue-600 transition-colors"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                      View on Brightspace
-                    </a>
                   )}
                 </div>
               )}
