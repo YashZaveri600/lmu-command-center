@@ -214,7 +214,7 @@ async function markSyncedTodoDone(userId, sourceId) {
 // Returns: [ { id, course, title, body, date, type, read } ]
 async function getUpdates(userId) {
   const { rows } = await q(
-    `SELECT id, course_app_id AS course, title, body, date, type, read
+    `SELECT id, course_app_id AS course, title, body, date, type, urgency, read, source_url
      FROM announcements WHERE user_id = $1 ORDER BY date DESC`,
     [userId]
   )
@@ -231,9 +231,9 @@ async function upsertUpdates(userId, updates) {
     await client.query('DELETE FROM announcements WHERE user_id = $1', [userId])
     for (const u of updates) {
       await client.query(
-        `INSERT INTO announcements (user_id, course_app_id, title, body, date, type, urgency, read)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [userId, u.course, u.title, u.body || '', u.date, u.type || 'announcement', u.urgency || null, u.read || false]
+        `INSERT INTO announcements (user_id, course_app_id, title, body, date, type, urgency, read, source_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [userId, u.course, u.title, u.body || '', u.date, u.type || 'announcement', u.urgency || null, u.read || false, u.source_url || null]
       )
     }
     await client.query('COMMIT')

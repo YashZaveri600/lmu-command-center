@@ -230,6 +230,7 @@ export async function syncUserData(userId, cookie) {
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           type: 'announcement',
           read: false,
+          source_url: item.source_url || null,
         }))
 
         // Get existing announcements and append new ones

@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   type VARCHAR(50) DEFAULT 'announcement',
   urgency VARCHAR(20),
   read BOOLEAN DEFAULT FALSE,
+  source_url TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 

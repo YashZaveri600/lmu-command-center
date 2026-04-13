@@ -301,6 +301,7 @@ export async function fetchAnnouncements(courseId, cookie) {
       title: item.Title,
       body: item.Body?.Html || item.Body?.Text || '',
       date: item.StartDate || item.CreatedDate,
+      source_url: `https://brightspace.lmu.edu/d2l/le/news/${courseId}/${item.Id}/view`,
     }))
   } catch (e) {
     console.error(`[brightspace] Failed to fetch announcements for course ${courseId}:`, e.message)
