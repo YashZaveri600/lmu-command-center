@@ -1,6 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
+
+const BS_ORIGIN = 'https://brightspace.lmu.edu'
+
+// Fix relative Brightspace links and make all links open in new tab
+function fixBodyHtml(html) {
+  if (!html) return ''
+  return html
+    .replace(/href=["']\/d2l\//g, `href="${BS_ORIGIN}/d2l/`)
+    .replace(/src=["']\/d2l\//g, `src="${BS_ORIGIN}/d2l/`)
+    .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
+}
 
 export default function Updates({ updates, courses }) {
   const [filter, setFilter] = useState('all')
@@ -85,7 +96,8 @@ export default function Updates({ updates, courses }) {
                   {item.body ? (
                     <div
                       className="mt-3 text-sm text-gray-600 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none [&_a]:text-blue-500 [&_a]:underline [&_img]:rounded [&_img]:max-w-full"
-                      dangerouslySetInnerHTML={{ __html: item.body }}
+                      dangerouslySetInnerHTML={{ __html: fixBodyHtml(item.body) }}
+                      onClick={e => { if (e.target.tagName === 'A') e.stopPropagation() }}
                     />
                   ) : (
                     <p className="mt-3 text-sm text-gray-400 italic">No content available.</p>
