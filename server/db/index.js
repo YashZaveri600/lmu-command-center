@@ -19,6 +19,24 @@ pool.query('SELECT NOW()').then(async () => {
     await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS source_id VARCHAR(200)`)
     // Create unique index for upsert dedup (only on non-null source_id)
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS todos_user_source_id_idx ON todos(user_id, source_id) WHERE source_id IS NOT NULL`)
+    // Course content table (Feature 1)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS course_content (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        course_app_id VARCHAR(100),
+        bs_id VARCHAR(100),
+        parent_bs_id VARCHAR(100),
+        title VARCHAR(500),
+        type VARCHAR(50),
+        url TEXT,
+        description TEXT,
+        due_date DATE,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS course_content_user_course_idx ON course_content(user_id, course_app_id)`)
     console.log('[db] Migrations complete')
   } catch (e) {
     console.log('[db] Migration note:', e.message)
@@ -234,6 +252,54 @@ async function upsertUpdates(userId, updates) {
         `INSERT INTO announcements (user_id, course_app_id, title, body, date, type, urgency, read, source_url)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [userId, u.course, u.title, u.body || '', u.date, u.type || 'announcement', u.urgency || null, u.read || false, u.source_url || null]
+      )
+    }
+    await client.query('COMMIT')
+  } catch (e) {
+    await client.query('ROLLBACK')
+    throw e
+  } finally {
+    client.release()
+  }
+}
+
+// ─── Course Content (Brightspace modules/files/links) ───
+// Returns: [ { id, course, bsId, parentBsId, title, type, url, description, dueDate, sortOrder } ]
+async function getCourseContent(userId) {
+  const { rows } = await q(
+    `SELECT id, course_app_id AS course, bs_id AS "bsId", parent_bs_id AS "parentBsId",
+            title, type, url, description, due_date AS "dueDate", sort_order AS "sortOrder"
+     FROM course_content WHERE user_id = $1 ORDER BY course_app_id, sort_order`,
+    [userId]
+  )
+  return rows.map(r => ({
+    ...r,
+    dueDate: r.dueDate ? r.dueDate.toISOString().split('T')[0] : null,
+  }))
+}
+
+async function upsertCourseContent(userId, appId, items) {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(
+      'DELETE FROM course_content WHERE user_id = $1 AND course_app_id = $2',
+      [userId, appId]
+    )
+    for (const item of items) {
+      await client.query(
+        `INSERT INTO course_content
+         (user_id, course_app_id, bs_id, parent_bs_id, title, type, url, description, due_date, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          userId, appId, item.bsId, item.parentBsId || null,
+          (item.title || '').slice(0, 500),
+          item.type || 'page',
+          item.url || null,
+          item.description || '',
+          item.dueDate ? new Date(item.dueDate) : null,
+          item.sortOrder ?? 0,
+        ]
       )
     }
     await client.query('COMMIT')
@@ -534,6 +600,7 @@ export default {
   getGrades, addGrade, deleteGrade, upsertGrades,
   getTodos, addTodo, updateTodo, deleteTodo, upsertSyncedTodo, markSyncedTodoDone,
   getUpdates, upsertUpdates,
+  getCourseContent, upsertCourseContent,
   getEmails, upsertEmails,
   getNotes, addNote, deleteNote,
   getStudySessions, addStudySession,

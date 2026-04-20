@@ -70,6 +70,7 @@ export default function App() {
 
 function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dark, toggleDark, mobileMenuOpen, setMobileMenuOpen }) {
   const { data: courses, setData: setCourses } = useAPI('courses')
+  const { data: courseContent, setData: setCourseContent } = useAPI('course-content')
   const { data: updates, setData: setUpdates } = useAPI('updates')
   const { data: todos, setData: setTodos } = useAPI('todos')
   const { data: emails, setData: setEmails } = useAPI('emails')
@@ -81,9 +82,9 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
   const { data: semester } = useAPI('semester')
 
   const handleSSE = useCallback((type, data) => {
-    const setters = { updates: setUpdates, todos: setTodos, emails: setEmails, courses: setCourses, automations: setAutomations, grades: setGrades, notes: setNotes, 'study-sessions': setStudySessions }
+    const setters = { updates: setUpdates, todos: setTodos, emails: setEmails, courses: setCourses, automations: setAutomations, grades: setGrades, notes: setNotes, 'study-sessions': setStudySessions, 'course-content': setCourseContent }
     if (setters[type]) setters[type](data)
-  }, [setUpdates, setTodos, setEmails, setCourses, setAutomations, setGrades, setNotes, setStudySessions])
+  }, [setUpdates, setTodos, setEmails, setCourses, setAutomations, setGrades, setNotes, setStudySessions, setCourseContent])
 
   useSSE(handleSSE)
 
@@ -148,7 +149,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
         {page === 'todos' && <Todos todos={todos} courses={courses} setTodos={setTodos} />}
         {page === 'emails' && <Emails emails={emails} courses={courses} />}
         {page === 'schedule' && <Schedule schedule={schedule} courses={courses} updates={updates} />}
-        {page === 'files' && <Files courses={courses} setCourses={setCourses} />}
+        {page === 'files' && <Files courses={courses} courseContent={courseContent} setCourses={setCourses} />}
         {page === 'automations' && <Automations automations={automations} />}
         {page === 'focus' && <FocusMode updates={updates} todos={todos} courses={courses} onNavigate={navigate} />}
         {page === 'grades' && <Grades grades={grades} courses={courses} setGrades={setGrades} />}

@@ -64,6 +64,23 @@ CREATE TABLE IF NOT EXISTS grades (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Course content (modules, files, links, pages) synced from Brightspace
+CREATE TABLE IF NOT EXISTS course_content (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  course_app_id VARCHAR(100),
+  bs_id VARCHAR(100),
+  parent_bs_id VARCHAR(100),
+  title VARCHAR(500),
+  type VARCHAR(50),
+  url TEXT,
+  description TEXT,
+  due_date DATE,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS course_content_user_course_idx ON course_content(user_id, course_app_id);
+
 -- Announcements / updates
 CREATE TABLE IF NOT EXISTS announcements (
   id SERIAL PRIMARY KEY,

@@ -292,6 +292,90 @@ export async function fetchQuizAttempts(courseId, quizId, cookie) {
   }
 }
 
+// ─── Get course content modules (files, links, pages, videos) ───
+// Recursively walks the content tree and returns a flat list with parent references.
+export async function fetchCourseContent(courseId, cookie) {
+  const items = []
+  const BASE = 'https://brightspace.lmu.edu'
+
+  // Normalize Brightspace topic type codes
+  const TOPIC_TYPES = {
+    0: 'file',      // uploaded file
+    1: 'link',      // external link / quicklink
+    2: 'page',      // HTML page / topic
+    3: 'dropbox',   // assignment link
+    4: 'quiz',      // quiz link
+    5: 'discussion',// discussion link
+    6: 'scorm',
+    7: 'checklist',
+    8: 'survey',
+    9: 'selfassess',
+  }
+
+  // Walk a module, recursively
+  async function walkModule(module, parentBsId, sortCounter) {
+    const moduleBsId = `module-${module.ModuleId || module.Id}`
+    items.push({
+      bsId: moduleBsId,
+      parentBsId: parentBsId || null,
+      title: module.Title || 'Untitled Module',
+      type: 'module',
+      url: null,
+      description: module.Description?.Html || module.Description?.Text || '',
+      dueDate: module.ModuleDueDate || null,
+      sortOrder: sortCounter.value++,
+    })
+
+    // Fetch module structure (children: sub-modules + topics)
+    try {
+      const structure = await bsFetch(
+        `/d2l/api/le/1.0/${courseId}/content/modules/${module.ModuleId || module.Id}/structure/`,
+        cookie
+      )
+      for (const child of (structure || [])) {
+        if (child.Type === 0 || child.ModuleId) {
+          // Sub-module
+          await walkModule(child, moduleBsId, sortCounter)
+        } else {
+          // Topic
+          const topicType = TOPIC_TYPES[child.TypeIdentifier] || TOPIC_TYPES[child.Type] || 'page'
+          let url = child.Url || null
+          // Rewrite relative /d2l/ URLs to absolute
+          if (url && url.startsWith('/d2l/')) url = `${BASE}${url}`
+          // For topics without a direct URL, construct the Brightspace viewer URL
+          if (!url && child.TopicId) {
+            url = `${BASE}/d2l/le/content/${courseId}/viewContent/${child.TopicId}/View`
+          }
+          items.push({
+            bsId: `topic-${child.TopicId || child.Id}`,
+            parentBsId: moduleBsId,
+            title: child.Title || 'Untitled',
+            type: topicType,
+            url,
+            description: child.Description?.Html || child.Description?.Text || '',
+            dueDate: child.DueDate || null,
+            sortOrder: sortCounter.value++,
+          })
+        }
+      }
+    } catch (e) {
+      console.log(`[brightspace] Failed to fetch module structure ${module.ModuleId} for ${courseId}: ${e.message}`)
+    }
+  }
+
+  try {
+    const root = await bsFetch(`/d2l/api/le/1.0/${courseId}/content/root/`, cookie)
+    const sortCounter = { value: 0 }
+    for (const module of (root || [])) {
+      await walkModule(module, null, sortCounter)
+    }
+    return items
+  } catch (e) {
+    console.error(`[brightspace] Failed to fetch content for course ${courseId}:`, e.message)
+    return []
+  }
+}
+
 // ─── Get announcements/news for a course ───
 export async function fetchAnnouncements(courseId, cookie) {
   try {
@@ -337,5 +421,6 @@ export default {
   fetchDiscussions,
   fetchMyDiscussionPosts,
   fetchAnnouncements,
+  fetchCourseContent,
   fetchWhoAmI,
 }

@@ -100,7 +100,7 @@ function inferCategory(appId, gradeName, apiCategory) {
 
 // ─── Main sync function ───
 export async function syncUserData(userId, cookie) {
-  const results = { courses: 0, grades: 0, announcements: 0, tasks: 0, completed: 0, errors: [] }
+  const results = { courses: 0, grades: 0, announcements: 0, tasks: 0, completed: 0, content: 0, errors: [] }
   const allAnnouncements = [] // collect for AI analysis at end
 
   try {
@@ -260,6 +260,19 @@ export async function syncUserData(userId, cookie) {
       } catch (e) {
         console.error(`[sync] Error syncing announcements for ${appId}:`, e.message)
         results.errors.push(`${appId} announcements: ${e.message}`)
+      }
+
+      // 4b. Fetch course content modules (files, links, pages)
+      try {
+        const content = await brightspace.fetchCourseContent(enrollment.brightspaceId, cookie)
+        if (content.length > 0) {
+          await db.upsertCourseContent(userId, appId, content)
+          results.content += content.length
+          console.log(`[sync] ${appId}: ${content.length} content items`)
+        }
+      } catch (e) {
+        console.error(`[sync] Error syncing course content for ${appId}:`, e.message)
+        results.errors.push(`${appId} content: ${e.message}`)
       }
 
       // 5. Fetch assignments (dropbox folders) — these are real tasks with due dates
