@@ -6,6 +6,38 @@ import {
   Presentation, Sheet, Music, Archive,
 } from 'lucide-react'
 
+// Compute the display breakdown "X files · Y folders · Z links" for a course.
+// Modules count as folders; precise file kinds count as files; everything else
+// (link, page, quiz, discussion, dropbox, scorm, unknown) counts as links.
+function breakdownCounts(items) {
+  let folders = 0, files = 0, links = 0
+  for (const item of items) {
+    if (item.type === 'module') { folders++; continue }
+    const kind = detectFileType(item.url, item.type)
+    if (['pdf', 'pptx', 'docx', 'xlsx', 'video', 'image', 'audio', 'archive'].includes(kind)) {
+      files++
+    } else {
+      links++
+    }
+  }
+  return { folders, files, links }
+}
+
+function countsLabel(counts) {
+  const parts = []
+  if (counts.files) parts.push(`${counts.files} file${counts.files === 1 ? '' : 's'}`)
+  if (counts.folders) parts.push(`${counts.folders} folder${counts.folders === 1 ? '' : 's'}`)
+  if (counts.links) parts.push(`${counts.links} link${counts.links === 1 ? '' : 's'}`)
+  return parts.join(' · ')
+}
+
+// Collect every module bsId in the items list — used for "Expand all".
+function collectModuleIds(items) {
+  const out = new Set()
+  for (const item of items) if (item.type === 'module') out.add(item.bsId)
+  return out
+}
+
 // Pick the best "syllabus" item for a course from the content tree.
 // Prefer a leaf file/page/link whose title contains "syllabus"; fall back
 // to any item (including a module) whose title contains "syllabus".
@@ -160,6 +192,8 @@ export default function Files({ courses, courseContent, setCourses }) {
 
 function CourseBlock({ course, items, query }) {
   const [open, setOpen] = useState(query.length > 0)
+  // Lifted expansion state — a Set of module bsIds currently expanded.
+  const [expandedSet, setExpandedSet] = useState(() => new Set())
 
   // Build tree
   const tree = useMemo(() => buildTree(items), [items])
@@ -173,16 +207,38 @@ function CourseBlock({ course, items, query }) {
   // Syllabus pinned to the top (also still visible in the tree below)
   const syllabus = useMemo(() => findSyllabus(items), [items])
 
-  const total = items.length
+  // Counts breakdown
+  const counts = useMemo(() => breakdownCounts(items), [items])
+  const label = countsLabel(counts)
+
   const isOpen = open || query.length > 0
+
+  const toggleNode = (bsId) => {
+    setExpandedSet(prev => {
+      const next = new Set(prev)
+      if (next.has(bsId)) next.delete(bsId)
+      else next.add(bsId)
+      return next
+    })
+  }
+
+  const handleExpandAll = (e) => {
+    e.stopPropagation()
+    setExpandedSet(collectModuleIds(items))
+    setOpen(true)
+  }
+  const handleCollapseAll = (e) => {
+    e.stopPropagation()
+    setExpandedSet(new Set())
+  }
 
   if (query && filtered.length === 0) return null
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-      <button
+      <div
         onClick={() => setOpen(!isOpen)}
-        className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
       >
         {isOpen
           ? <ChevronDown size={18} className="text-gray-400" />
@@ -191,16 +247,39 @@ function CourseBlock({ course, items, query }) {
         <span className="font-medium text-sm text-gray-900 dark:text-white flex-1 text-left">
           {course.name}
         </span>
-        <span className="text-xs text-gray-400">{total} items</span>
-      </button>
+        {/* Expand/Collapse all — stop propagation so they don't toggle the course header */}
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+          <button
+            onClick={handleExpandAll}
+            className="hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            Expand all
+          </button>
+          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <button
+            onClick={handleCollapseAll}
+            className="hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            Collapse all
+          </button>
+        </div>
+        <span className="text-xs text-gray-400 ml-2">{label}</span>
+      </div>
       {isOpen && (
         <>
           {syllabus && <PinnedSyllabus item={syllabus} />}
-          <div className={`border-t border-gray-100 dark:border-gray-700 px-3 py-2 ${syllabus ? '' : ''}`}>
+          <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
             {filtered.length === 0
               ? <p className="text-sm text-gray-400 italic py-3 px-3">No items.</p>
               : filtered.map(node => (
-                  <TreeNode key={node.bsId} node={node} depth={0} forceOpen={query.length > 0} />
+                  <TreeNode
+                    key={node.bsId}
+                    node={node}
+                    depth={0}
+                    forceOpen={query.length > 0}
+                    expandedSet={expandedSet}
+                    onToggle={toggleNode}
+                  />
                 ))}
           </div>
         </>
@@ -246,9 +325,8 @@ function PinnedSyllabus({ item }) {
   )
 }
 
-function TreeNode({ node, depth, forceOpen }) {
-  const [open, setOpen] = useState(forceOpen)
-  const isOpen = open || forceOpen
+function TreeNode({ node, depth, forceOpen, expandedSet, onToggle }) {
+  const isOpen = forceOpen || expandedSet.has(node.bsId)
   const hasChildren = node.children && node.children.length > 0
   const indent = { paddingLeft: `${depth * 18 + 8}px` }
 
@@ -256,7 +334,7 @@ function TreeNode({ node, depth, forceOpen }) {
     return (
       <div>
         <button
-          onClick={() => setOpen(!isOpen)}
+          onClick={() => onToggle(node.bsId)}
           className="flex items-center gap-2 py-1.5 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded"
           style={indent}
         >
@@ -272,7 +350,14 @@ function TreeNode({ node, depth, forceOpen }) {
         {isOpen && hasChildren && (
           <div>
             {node.children.map(child => (
-              <TreeNode key={child.bsId} node={child} depth={depth + 1} forceOpen={forceOpen} />
+              <TreeNode
+                key={child.bsId}
+                node={child}
+                depth={depth + 1}
+                forceOpen={forceOpen}
+                expandedSet={expandedSet}
+                onToggle={onToggle}
+              />
             ))}
           </div>
         )}
