@@ -28,6 +28,54 @@ function formatRelative(d) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+// Color tokens for the file-type badge (match the icon colors from Step 1).
+const BADGE_COLORS = {
+  pdf: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  pptx: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+  docx: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+  xlsx: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+  video: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  image: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+  audio: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+  archive: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+  link: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+  page: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+  quiz: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+  discussion: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+  dropbox: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+  scorm: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+  unknown: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
+}
+
+// Short fallback labels for kinds that don't have a file extension.
+const KIND_LABELS = {
+  link: 'LINK',
+  page: 'PAGE',
+  quiz: 'QUIZ',
+  discussion: 'FORUM',
+  dropbox: 'ASSIGN',
+  scorm: 'SCORM',
+}
+
+// Compute { label, color } for the trailing badge next to a leaf filename.
+// Prefers the real file extension (PDF, PPTX, MP4...) when present.
+// Returns null when nothing meaningful to show (e.g., unknown + no url).
+function getBadge(url, kind) {
+  if (url) {
+    const clean = url.split('?')[0].split('#')[0].toLowerCase()
+    const m = clean.match(/\.([a-z0-9]{2,5})$/)
+    if (m) {
+      const label = m[1].toUpperCase()
+      const color = BADGE_COLORS[kind] || BADGE_COLORS.unknown
+      return { label, color }
+    }
+  }
+  if (KIND_LABELS[kind]) {
+    return { label: KIND_LABELS[kind], color: BADGE_COLORS[kind] || BADGE_COLORS.unknown }
+  }
+  return null
+}
+
 // Compute the display breakdown "X files · Y folders · Z links" for a course.
 // Modules count as folders; precise file kinds count as files; everything else
 // (link, page, quiz, discussion, dropbox, scorm, unknown) counts as links.
@@ -386,6 +434,7 @@ function CourseBlock({ course, items, query }) {
 function PinnedSyllabus({ item }) {
   const kind = detectFileType(item.url, item.type)
   const willDownload = isDownloadType(kind)
+  const badge = getBadge(item.url, kind)
   const hasUrl = Boolean(item.url)
   const Tag = hasUrl ? 'a' : 'div'
   const linkProps = hasUrl
@@ -410,6 +459,11 @@ function PinnedSyllabus({ item }) {
       <span className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">
         {item.title}
       </span>
+      {badge && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium tracking-wide flex-shrink-0 ${badge.color}`}>
+          {badge.label}
+        </span>
+      )}
       {hasUrl && (
         willDownload
           ? <Download size={13} className="text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-200 flex-shrink-0" />
@@ -462,6 +516,7 @@ function TreeNode({ node, depth, forceOpen, expandedSet, onToggle }) {
   // Leaf (topic/file/link/etc.)
   const kind = detectFileType(node.url, node.type)
   const willDownload = isDownloadType(kind)
+  const badge = getBadge(node.url, kind)
   const Tag = node.url ? 'a' : 'div'
   const linkProps = node.url
     ? {
@@ -481,6 +536,11 @@ function TreeNode({ node, depth, forceOpen, expandedSet, onToggle }) {
       <span className="text-sm text-gray-600 dark:text-gray-300 truncate flex-1 group-hover:text-gray-900 dark:group-hover:text-white">
         {node.title}
       </span>
+      {badge && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium tracking-wide flex-shrink-0 ${badge.color}`}>
+          {badge.label}
+        </span>
+      )}
       {node.url && (
         willDownload
           ? <Download size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0" />
