@@ -1,24 +1,74 @@
 import React, { useState, useMemo } from 'react'
 import {
   ChevronRight, ChevronDown, Folder, FileText, Link as LinkIcon,
-  Video, Image, BookOpen, ClipboardCheck, MessageSquare, HelpCircle,
-  RefreshCw, Search, ExternalLink,
+  Video, Image as ImageIcon, BookOpen, ClipboardCheck, MessageSquare, HelpCircle,
+  RefreshCw, Search, ExternalLink, Download,
+  Presentation, Sheet, Music, Archive,
 } from 'lucide-react'
 
-// Map Brightspace content types to icons
-function IconFor({ type, className = '' }) {
+// Detect a precise file kind from the URL extension.
+// Falls back to the Brightspace content type if no extension match.
+function detectFileType(url, type) {
+  if (url) {
+    // Strip query string and fragment, lowercase for matching
+    const clean = url.split('?')[0].split('#')[0].toLowerCase()
+    // Extract extension (handles paths with dots in dirnames)
+    const m = clean.match(/\.([a-z0-9]{2,5})$/)
+    if (m) {
+      const ext = m[1]
+      if (ext === 'pdf') return 'pdf'
+      if (ext === 'pptx' || ext === 'ppt') return 'pptx'
+      if (ext === 'docx' || ext === 'doc' || ext === 'rtf') return 'docx'
+      if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') return 'xlsx'
+      if (['mp4', 'mov', 'webm', 'm4v', 'mkv', 'avi'].includes(ext)) return 'video'
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'image'
+      if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(ext)) return 'audio'
+      if (['zip', 'rar', '7z', 'tar', 'gz', 'tgz'].includes(ext)) return 'archive'
+    }
+  }
+  // Fall back to the high-level type the sync stored
+  if (type && ['quiz', 'discussion', 'dropbox', 'scorm', 'page', 'link', 'module'].includes(type)) {
+    return type
+  }
+  return 'unknown'
+}
+
+// True for file kinds that browsers can't preview inline — clicking will download.
+function isDownloadType(kind) {
+  return ['pptx', 'docx', 'xlsx', 'archive'].includes(kind)
+}
+
+// Human-friendly label for tooltips, using the real extension when available.
+function actionLabel(url, kind) {
+  if (isDownloadType(kind)) {
+    const m = (url || '').split('?')[0].match(/\.([a-zA-Z0-9]{2,5})$/)
+    const ext = m ? m[1].toLowerCase() : kind
+    return `Downloads .${ext} file`
+  }
+  return 'Opens in new tab'
+}
+
+// Map the detected kind to a distinct icon + color.
+function IconFor({ kind, className = '' }) {
   const map = {
     module: <Folder size={14} className={`text-yellow-500 ${className}`} />,
-    file: <FileText size={14} className={`text-blue-500 ${className}`} />,
+    pdf: <FileText size={14} className={`text-red-500 ${className}`} />,
+    pptx: <Presentation size={14} className={`text-orange-500 ${className}`} />,
+    docx: <FileText size={14} className={`text-blue-500 ${className}`} />,
+    xlsx: <Sheet size={14} className={`text-green-500 ${className}`} />,
+    video: <Video size={14} className={`text-red-500 ${className}`} />,
+    image: <ImageIcon size={14} className={`text-pink-500 ${className}`} />,
+    audio: <Music size={14} className={`text-purple-500 ${className}`} />,
+    archive: <Archive size={14} className={`text-gray-500 ${className}`} />,
     link: <LinkIcon size={14} className={`text-purple-500 ${className}`} />,
     page: <BookOpen size={14} className={`text-gray-500 ${className}`} />,
-    dropbox: <ClipboardCheck size={14} className={`text-green-500 ${className}`} />,
     quiz: <HelpCircle size={14} className={`text-orange-500 ${className}`} />,
     discussion: <MessageSquare size={14} className={`text-pink-500 ${className}`} />,
-    video: <Video size={14} className={`text-red-500 ${className}`} />,
+    dropbox: <ClipboardCheck size={14} className={`text-green-500 ${className}`} />,
     scorm: <BookOpen size={14} className={`text-indigo-500 ${className}`} />,
+    file: <FileText size={14} className={`text-blue-500 ${className}`} />,
   }
-  return map[type] || <FileText size={14} className={`text-gray-400 ${className}`} />
+  return map[kind] || <FileText size={14} className={`text-gray-400 ${className}`} />
 }
 
 export default function Files({ courses, courseContent, setCourses }) {
@@ -156,7 +206,7 @@ function TreeNode({ node, depth, forceOpen }) {
           {isOpen
             ? <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
             : <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />}
-          <IconFor type={node.type} />
+          <IconFor kind="module" />
           <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{node.title}</span>
           {hasChildren && (
             <span className="text-xs text-gray-400 ml-1 flex-shrink-0">({node.children.length})</span>
@@ -174,9 +224,16 @@ function TreeNode({ node, depth, forceOpen }) {
   }
 
   // Leaf (topic/file/link/etc.)
+  const kind = detectFileType(node.url, node.type)
+  const willDownload = isDownloadType(kind)
   const Tag = node.url ? 'a' : 'div'
   const linkProps = node.url
-    ? { href: node.url, target: '_blank', rel: 'noopener noreferrer' }
+    ? {
+        href: node.url,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        title: actionLabel(node.url, kind),
+      }
     : {}
   return (
     <Tag
@@ -184,12 +241,14 @@ function TreeNode({ node, depth, forceOpen }) {
       className={`flex items-center gap-2 py-1.5 group ${node.url ? 'hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer' : ''} rounded`}
       style={{ paddingLeft: `${depth * 18 + 22}px`, paddingRight: '8px' }}
     >
-      <IconFor type={node.type} />
+      <IconFor kind={kind} />
       <span className="text-sm text-gray-600 dark:text-gray-300 truncate flex-1 group-hover:text-gray-900 dark:group-hover:text-white">
         {node.title}
       </span>
       {node.url && (
-        <ExternalLink size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0" />
+        willDownload
+          ? <Download size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0" />
+          : <ExternalLink size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0" />
       )}
     </Tag>
   )
