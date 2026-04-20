@@ -382,7 +382,15 @@ export async function fetchCourseContent(courseId, cookie) {
       const topicId = child.TopicId ?? child.Id
       if (topicId == null) continue
       let url = child.Url || null
-      if (url && url.startsWith('/d2l/')) url = `${BASE}${url}`
+      // Any relative path on Brightspace should be prepended with the base.
+      // Includes /d2l/..., /content/enforced/..., /le/..., etc.
+      if (url && url.startsWith('/')) {
+        url = `${BASE}${url}`
+      }
+      // D2L internal URI scheme (e.g. d2l:brightspace:content:...) — use the viewer URL instead
+      if (url && url.startsWith('d2l:')) {
+        url = `${BASE}/d2l/le/content/${courseId}/viewContent/${topicId}/View`
+      }
       if (!url) url = `${BASE}/d2l/le/content/${courseId}/viewContent/${topicId}/View`
       items.push({
         bsId: `topic-${topicId}`,
