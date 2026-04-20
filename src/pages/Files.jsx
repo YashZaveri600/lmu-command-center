@@ -1,10 +1,32 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   ChevronRight, ChevronDown, Folder, FileText, Link as LinkIcon,
   Video, Image as ImageIcon, BookOpen, ClipboardCheck, MessageSquare, HelpCircle,
-  RefreshCw, Search, ExternalLink, Download, Star,
+  RefreshCw, Search, ExternalLink, Download, Star, CheckCircle2, AlertCircle,
   Presentation, Sheet, Music, Archive,
 } from 'lucide-react'
+
+// API base — mirrors the convention used elsewhere in the app.
+const API = import.meta.env.DEV
+  ? `http://${window.location.hostname}:3001/api`
+  : '/api'
+
+// "2m ago" / "1h ago" / "Yesterday" / date
+function formatRelative(d) {
+  if (!d) return null
+  const now = Date.now()
+  const diffMs = now - d.getTime()
+  const sec = Math.round(diffMs / 1000)
+  if (sec < 60) return 'Just now'
+  const min = Math.round(sec / 60)
+  if (min < 60) return `${min} min ago`
+  const hr = Math.round(min / 60)
+  if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`
+  const day = Math.round(hr / 24)
+  if (day === 1) return 'Yesterday'
+  if (day < 7) return `${day} days ago`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 // Compute the display breakdown "X files · Y folders · Z links" for a course.
 // Modules count as folders; precise file kinds count as files; everything else
@@ -119,6 +141,46 @@ function IconFor({ kind, className = '' }) {
 
 export default function Files({ courses, courseContent, setCourses }) {
   const [query, setQuery] = useState('')
+  const [lastSync, setLastSync] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncChip, setSyncChip] = useState(null) // { type: 'success'|'error', message }
+  // Tick every 30s so the "X min ago" text stays fresh without needing interaction.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const i = setInterval(() => setTick(t => t + 1), 30_000)
+    return () => clearInterval(i)
+  }, [])
+
+  // Fetch last-sync time from backend on mount.
+  const refreshStatus = useCallback(() => {
+    fetch(`${API}/brightspace/status`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (data.lastSync) setLastSync(new Date(data.lastSync)) })
+      .catch(() => {})
+  }, [])
+  useEffect(() => { refreshStatus() }, [refreshStatus])
+
+  // Trigger a full Brightspace sync.
+  const handleResync = async () => {
+    if (syncing) return
+    setSyncing(true)
+    setSyncChip(null)
+    try {
+      const res = await fetch(`${API}/sync`, { method: 'POST', credentials: 'include' })
+      const data = await res.json()
+      if (data.ok) {
+        setLastSync(new Date())
+        setSyncChip({ type: 'success', message: 'Synced' })
+      } else {
+        setSyncChip({ type: 'error', message: data.error || 'Sync failed' })
+      }
+    } catch (e) {
+      setSyncChip({ type: 'error', message: 'Sync failed' })
+    }
+    setSyncing(false)
+    // Hide the chip after 3s
+    setTimeout(() => setSyncChip(null), 3000)
+  }
 
   // Group content by course (safe if courseContent is null)
   const byCourse = useMemo(() => {
@@ -154,6 +216,38 @@ export default function Files({ courses, courseContent, setCourses }) {
             {total} items synced from Brightspace across {coursesWithContent.length} courses
           </p>
         </div>
+      </div>
+
+      {/* Sync status + Resync button */}
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5">
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          <span>
+            {lastSync
+              ? <>Last synced <span className="text-gray-700 dark:text-gray-200">{formatRelative(lastSync)}</span></>
+              : 'Not synced yet'}
+          </span>
+          {syncChip && (
+            <span
+              className={`ml-2 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                syncChip.type === 'success'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+              }`}
+            >
+              {syncChip.type === 'success' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
+              {syncChip.message}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={handleResync}
+          disabled={syncing}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+          {syncing ? 'Syncing...' : 'Resync'}
+        </button>
       </div>
 
       <div className="relative">
