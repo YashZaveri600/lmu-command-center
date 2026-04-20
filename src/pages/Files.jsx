@@ -2,9 +2,23 @@ import React, { useState, useMemo } from 'react'
 import {
   ChevronRight, ChevronDown, Folder, FileText, Link as LinkIcon,
   Video, Image as ImageIcon, BookOpen, ClipboardCheck, MessageSquare, HelpCircle,
-  RefreshCw, Search, ExternalLink, Download,
+  RefreshCw, Search, ExternalLink, Download, Star,
   Presentation, Sheet, Music, Archive,
 } from 'lucide-react'
+
+// Pick the best "syllabus" item for a course from the content tree.
+// Prefer a leaf file/page/link whose title contains "syllabus"; fall back
+// to any item (including a module) whose title contains "syllabus".
+function findSyllabus(items) {
+  if (!items || items.length === 0) return null
+  const leaf = items.find(
+    c =>
+      /syllabus/i.test(c.title) &&
+      ['file', 'page', 'link', 'pdf', 'pptx', 'docx'].includes(c.type)
+  )
+  if (leaf) return leaf
+  return items.find(c => /syllabus/i.test(c.title)) || null
+}
 
 // Detect a precise file kind from the URL extension.
 // Falls back to the Brightspace content type if no extension match.
@@ -156,6 +170,9 @@ function CourseBlock({ course, items, query }) {
     return filterTree(tree, query)
   }, [tree, query])
 
+  // Syllabus pinned to the top (also still visible in the tree below)
+  const syllabus = useMemo(() => findSyllabus(items), [items])
+
   const total = items.length
   const isOpen = open || query.length > 0
 
@@ -177,15 +194,55 @@ function CourseBlock({ course, items, query }) {
         <span className="text-xs text-gray-400">{total} items</span>
       </button>
       {isOpen && (
-        <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
-          {filtered.length === 0
-            ? <p className="text-sm text-gray-400 italic py-3 px-3">No items.</p>
-            : filtered.map(node => (
-                <TreeNode key={node.bsId} node={node} depth={0} forceOpen={query.length > 0} />
-              ))}
-        </div>
+        <>
+          {syllabus && <PinnedSyllabus item={syllabus} />}
+          <div className={`border-t border-gray-100 dark:border-gray-700 px-3 py-2 ${syllabus ? '' : ''}`}>
+            {filtered.length === 0
+              ? <p className="text-sm text-gray-400 italic py-3 px-3">No items.</p>
+              : filtered.map(node => (
+                  <TreeNode key={node.bsId} node={node} depth={0} forceOpen={query.length > 0} />
+                ))}
+          </div>
+        </>
       )}
     </div>
+  )
+}
+
+// Pinned syllabus shortcut — shown above the tree when detected.
+function PinnedSyllabus({ item }) {
+  const kind = detectFileType(item.url, item.type)
+  const willDownload = isDownloadType(kind)
+  const hasUrl = Boolean(item.url)
+  const Tag = hasUrl ? 'a' : 'div'
+  const linkProps = hasUrl
+    ? {
+        href: item.url,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        title: actionLabel(item.url, kind),
+      }
+    : {}
+  return (
+    <Tag
+      {...linkProps}
+      className={`flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-indigo-50 dark:bg-indigo-900/20 group ${
+        hasUrl ? 'hover:bg-indigo-100 dark:hover:bg-indigo-900/30 cursor-pointer' : ''
+      }`}
+    >
+      <Star size={14} className="text-indigo-500 fill-indigo-500 flex-shrink-0" />
+      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex-shrink-0">
+        Syllabus
+      </span>
+      <span className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">
+        {item.title}
+      </span>
+      {hasUrl && (
+        willDownload
+          ? <Download size={13} className="text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-200 flex-shrink-0" />
+          : <ExternalLink size={13} className="text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-200 flex-shrink-0" />
+      )}
+    </Tag>
   )
 }
 
