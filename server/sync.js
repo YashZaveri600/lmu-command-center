@@ -263,16 +263,21 @@ export async function syncUserData(userId, cookie) {
       }
 
       // 4b. Fetch course content modules (files, links, pages)
+      // Hard 15s budget per course so a slow course cannot hang the whole sync.
       try {
-        const content = await brightspace.fetchCourseContent(enrollment.brightspaceId, cookie)
-        if (content.length > 0) {
+        const contentPromise = brightspace.fetchCourseContent(enrollment.brightspaceId, cookie)
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('content sync timeout')), 15_000)
+        )
+        const content = await Promise.race([contentPromise, timeout])
+        if (content && content.length > 0) {
           await db.upsertCourseContent(userId, appId, content)
           results.content += content.length
           console.log(`[sync] ${appId}: ${content.length} content items`)
         }
       } catch (e) {
-        console.error(`[sync] Error syncing course content for ${appId}:`, e.message)
-        results.errors.push(`${appId} content: ${e.message}`)
+        console.error(`[sync] Skip content for ${appId}: ${e.message}`)
+        // Do not push to results.errors — content sync is best-effort, never a hard failure
       }
 
       // 5. Fetch assignments (dropbox folders) — these are real tasks with due dates

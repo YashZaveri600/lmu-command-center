@@ -293,28 +293,68 @@ export async function fetchQuizAttempts(courseId, quizId, cookie) {
 }
 
 // ─── Get course content modules (files, links, pages, videos) ───
-// Recursively walks the content tree and returns a flat list with parent references.
+// Walks the content tree and returns a flat list with parent references.
+// Fetches sibling modules in parallel with a concurrency cap, bounded depth,
+// and resilient to any individual API call failing.
 export async function fetchCourseContent(courseId, cookie) {
-  const items = []
   const BASE = 'https://brightspace.lmu.edu'
+  const MAX_DEPTH = 8
+  const CONCURRENCY = 4
 
-  // Normalize Brightspace topic type codes
-  const TOPIC_TYPES = {
-    0: 'file',      // uploaded file
-    1: 'link',      // external link / quicklink
-    2: 'page',      // HTML page / topic
-    3: 'dropbox',   // assignment link
-    4: 'quiz',      // quiz link
-    5: 'discussion',// discussion link
-    6: 'scorm',
-    7: 'checklist',
-    8: 'survey',
-    9: 'selfassess',
+  // Normalize Brightspace topic type codes to a small set we render icons for
+  function classifyTopic(t) {
+    const code = t.TypeIdentifier ?? t.Type
+    const map = {
+      0: 'file', 1: 'link', 2: 'page',
+      3: 'dropbox', 4: 'quiz', 5: 'discussion',
+      6: 'scorm', 7: 'checklist', 8: 'survey', 9: 'selfassess',
+    }
+    if (typeof code === 'number' && map[code]) return map[code]
+    // Fall back to URL heuristics
+    const url = t.Url || ''
+    if (/\.pdf$/i.test(url)) return 'file'
+    if (/quiz/i.test(url)) return 'quiz'
+    if (/discussion/i.test(url)) return 'discussion'
+    if (/dropbox/i.test(url)) return 'dropbox'
+    return 'page'
   }
 
-  // Walk a module, recursively
-  async function walkModule(module, parentBsId, sortCounter) {
-    const moduleBsId = `module-${module.ModuleId || module.Id}`
+  // Normalize a child item into "module" or "topic" regardless of shape
+  function isModule(obj) {
+    // Modules expose ModuleId; topics expose TopicId. Prefer the presence check.
+    if (obj == null) return false
+    if (obj.TopicId !== undefined && obj.TopicId !== null) return false
+    if (obj.ModuleId !== undefined && obj.ModuleId !== null) return true
+    // Last resort: Type === 0 is "Module" in Brightspace Valence
+    return obj.Type === 0
+  }
+
+  // Minimal concurrency limiter
+  async function mapWithLimit(list, limit, fn) {
+    const results = new Array(list.length)
+    let idx = 0
+    async function runner() {
+      while (true) {
+        const i = idx++
+        if (i >= list.length) return
+        try { results[i] = await fn(list[i], i) }
+        catch (e) { results[i] = null }
+      }
+    }
+    const runners = Array(Math.min(limit, list.length)).fill(0).map(runner)
+    await Promise.all(runners)
+    return results
+  }
+
+  const items = []
+  let sortOrder = 0
+
+  async function walk(module, parentBsId, depth) {
+    if (depth > MAX_DEPTH) return
+    const modId = module.ModuleId ?? module.Id
+    if (modId == null) return
+    const moduleBsId = `module-${modId}`
+
     items.push({
       bsId: moduleBsId,
       parentBsId: parentBsId || null,
@@ -323,55 +363,53 @@ export async function fetchCourseContent(courseId, cookie) {
       url: null,
       description: module.Description?.Html || module.Description?.Text || '',
       dueDate: module.ModuleDueDate || null,
-      sortOrder: sortCounter.value++,
+      sortOrder: sortOrder++,
     })
 
-    // Fetch module structure (children: sub-modules + topics)
+    // Fetch this module's structure (direct children only)
+    let structure
     try {
-      const structure = await bsFetch(
-        `/d2l/api/le/1.0/${courseId}/content/modules/${module.ModuleId || module.Id}/structure/`,
-        cookie
-      )
-      for (const child of (structure || [])) {
-        if (child.Type === 0 || child.ModuleId) {
-          // Sub-module
-          await walkModule(child, moduleBsId, sortCounter)
-        } else {
-          // Topic
-          const topicType = TOPIC_TYPES[child.TypeIdentifier] || TOPIC_TYPES[child.Type] || 'page'
-          let url = child.Url || null
-          // Rewrite relative /d2l/ URLs to absolute
-          if (url && url.startsWith('/d2l/')) url = `${BASE}${url}`
-          // For topics without a direct URL, construct the Brightspace viewer URL
-          if (!url && child.TopicId) {
-            url = `${BASE}/d2l/le/content/${courseId}/viewContent/${child.TopicId}/View`
-          }
-          items.push({
-            bsId: `topic-${child.TopicId || child.Id}`,
-            parentBsId: moduleBsId,
-            title: child.Title || 'Untitled',
-            type: topicType,
-            url,
-            description: child.Description?.Html || child.Description?.Text || '',
-            dueDate: child.DueDate || null,
-            sortOrder: sortCounter.value++,
-          })
-        }
-      }
+      structure = await bsFetch(`/d2l/api/le/1.0/${courseId}/content/modules/${modId}/structure/`, cookie)
     } catch (e) {
-      console.log(`[brightspace] Failed to fetch module structure ${module.ModuleId} for ${courseId}: ${e.message}`)
+      console.log(`[brightspace] Skip module ${modId} for course ${courseId}: ${e.message}`)
+      return
+    }
+    if (!Array.isArray(structure)) return
+
+    // Add all topics first (preserve order)
+    for (const child of structure) {
+      if (isModule(child)) continue
+      const topicId = child.TopicId ?? child.Id
+      if (topicId == null) continue
+      let url = child.Url || null
+      if (url && url.startsWith('/d2l/')) url = `${BASE}${url}`
+      if (!url) url = `${BASE}/d2l/le/content/${courseId}/viewContent/${topicId}/View`
+      items.push({
+        bsId: `topic-${topicId}`,
+        parentBsId: moduleBsId,
+        title: child.Title || 'Untitled',
+        type: classifyTopic(child),
+        url,
+        description: child.Description?.Html || child.Description?.Text || '',
+        dueDate: child.DueDate || null,
+        sortOrder: sortOrder++,
+      })
+    }
+
+    // Recurse sub-modules in parallel with concurrency cap
+    const submodules = structure.filter(isModule)
+    if (submodules.length > 0) {
+      await mapWithLimit(submodules, CONCURRENCY, sm => walk(sm, moduleBsId, depth + 1))
     }
   }
 
   try {
     const root = await bsFetch(`/d2l/api/le/1.0/${courseId}/content/root/`, cookie)
-    const sortCounter = { value: 0 }
-    for (const module of (root || [])) {
-      await walkModule(module, null, sortCounter)
-    }
+    if (!Array.isArray(root)) return []
+    await mapWithLimit(root, CONCURRENCY, m => walk(m, null, 0))
     return items
   } catch (e) {
-    console.error(`[brightspace] Failed to fetch content for course ${courseId}:`, e.message)
+    console.error(`[brightspace] fetchCourseContent failed for course ${courseId}:`, e.message)
     return []
   }
 }
