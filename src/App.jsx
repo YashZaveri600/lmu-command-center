@@ -144,7 +144,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
         {page !== 'briefing' && <SearchBar courses={courses} onNavigate={navigate} />}
 
         {page === 'briefing' && <DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} />}
-        {page === 'dashboard' && <Dashboard updates={updates} todos={todos} emails={emails} courses={courses} onNavigate={navigate} />}
+        {page === 'dashboard' && <Dashboard updates={updates} todos={todos} emails={emails} courses={courses} courseContent={courseContent} onNavigate={navigate} />}
         {page === 'updates' && <Updates updates={updates} courses={courses} />}
         {page === 'todos' && <Todos todos={todos} courses={courses} setTodos={setTodos} />}
         {page === 'emails' && <Emails emails={emails} courses={courses} />}

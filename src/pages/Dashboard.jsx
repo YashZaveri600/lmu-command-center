@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import { AlertTriangle, CheckSquare, Clock, Bell, ArrowRight, Timer } from 'lucide-react'
+import { AlertTriangle, CheckSquare, Clock, Bell, ArrowRight, Timer, BookOpen, ExternalLink } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
 
-export default function Dashboard({ updates, todos, emails, courses, onNavigate }) {
+// Pick the best "syllabus" item for a course from the content tree
+function findSyllabus(courseContent, courseId) {
+  if (!courseContent) return null
+  const items = courseContent.filter(c => c.course === courseId)
+  // Prefer file/page/link items whose title contains "syllabus"
+  const leaf = items.find(
+    c => /syllabus/i.test(c.title) && ['file', 'page', 'link', 'pdf'].includes(c.type)
+  )
+  if (leaf) return leaf
+  // Next best: any item whose title contains "syllabus"
+  const any = items.find(c => /syllabus/i.test(c.title))
+  if (any) return any
+  return null
+}
+
+export default function Dashboard({ updates, todos, emails, courses, courseContent, onNavigate }) {
   if (!updates || !todos || !emails) return null
 
   const urgentItems = updates.filter(u => u.urgency === 'urgent')
@@ -79,6 +94,11 @@ export default function Dashboard({ updates, todos, emails, courses, onNavigate 
 
       {/* Countdown timers */}
       <CountdownTimers deadlines={upcomingDeadlines.slice(0, 3)} courses={courses} />
+
+      {/* Syllabi */}
+      {courses && courses.length > 0 && (
+        <SyllabiRow courses={courses} courseContent={courseContent} onNavigate={onNavigate} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming deadlines */}
@@ -177,6 +197,54 @@ function CountdownTimers({ deadlines, courses }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function SyllabiRow({ courses, courseContent, onNavigate }) {
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <BookOpen size={16} className="text-indigo-500" /> Syllabi
+        </h3>
+        <button
+          onClick={() => onNavigate('files')}
+          className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1"
+        >
+          Browse all files <ArrowRight size={12} />
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {courses.map(course => {
+          const syllabus = findSyllabus(courseContent, course.id)
+          const hasLink = syllabus && syllabus.url
+          return (
+            <a
+              key={course.id}
+              href={hasLink ? syllabus.url : undefined}
+              target={hasLink ? '_blank' : undefined}
+              rel={hasLink ? 'noopener noreferrer' : undefined}
+              className={`flex items-center gap-2 p-2.5 rounded border text-left transition-colors ${
+                hasLink
+                  ? 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer'
+                  : 'border-gray-100 dark:border-gray-700/60 opacity-60'
+              }`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{course.shortCode || course.name}</p>
+                <p className="text-xs text-gray-400 truncate">
+                  {syllabus ? syllabus.title : 'Syllabus not found'}
+                </p>
+              </div>
+              {hasLink && (
+                <ExternalLink size={12} className="text-gray-400 flex-shrink-0" />
+              )}
+            </a>
+          )
+        })}
+      </div>
     </div>
   )
 }
