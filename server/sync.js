@@ -480,6 +480,40 @@ export async function syncUserData(userId, cookie) {
       }
     }
 
+    // 7b. Dedup: delete non-Brightspace tasks (manual + AI-extracted) that are
+    // semantically the same as a Brightspace-synced task. The Brightspace one is
+    // the source of truth because it can auto-complete on submission.
+    try {
+      const { rowCount: dedupCount } = await db.pool.query(`
+        WITH toks AS (
+          SELECT id, user_id, course_app_id, task, source,
+                 (SELECT array_agg(w)
+                    FROM unnest(regexp_split_to_array(regexp_replace(lower(task), '[^a-z0-9 ]', ' ', 'g'), '\\s+')) AS w
+                    WHERE w NOT IN ('','the','and','of','a','an','in','on','to','for','by','with','at','from',
+                                    'write','read','watch','start','work','submit','due','complete','finish',
+                                    'assignment','homework','hw','paper','chapter','pages','page','pts',
+                                    'mon','tue','wed','thu','fri','sat','sun')) AS sig
+          FROM todos WHERE user_id = $1
+        )
+        DELETE FROM todos
+        WHERE id IN (
+          SELECT DISTINCT dup.id FROM toks dup
+          JOIN toks bs
+            ON dup.user_id = bs.user_id
+           AND dup.course_app_id = bs.course_app_id
+           AND dup.id <> bs.id
+           AND dup.source <> 'brightspace'
+           AND bs.source = 'brightspace'
+           AND bs.sig IS NOT NULL
+           AND array_length(bs.sig, 1) > 0
+           AND bs.sig <@ dup.sig
+        )
+      `, [userId])
+      if (dedupCount > 0) console.log(`[sync] Dedup removed ${dedupCount} duplicate task(s)`)
+    } catch (e) {
+      console.log('[sync] Dedup note:', e.message)
+    }
+
     // Clean up old courses not in current semester
     try {
       const currentAppIds = activeCourses.map(enrollment => {
