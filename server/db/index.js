@@ -229,6 +229,8 @@ async function deleteTodo(userId, todoId) {
 
 // Upsert a synced todo — inserts if source_id doesn't exist, updates on conflict.
 // Rubric (JSONB, optional) overwrites on update when provided.
+// done is "sticky": once true it stays true on re-sync so a flaky Brightspace
+// submission check can't revert a task the user already completed.
 async function upsertSyncedTodo(userId, todo) {
   const rubricJson = todo.rubric ? JSON.stringify(todo.rubric) : null
   const { rows } = await q(
@@ -236,7 +238,7 @@ async function upsertSyncedTodo(userId, todo) {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (user_id, source_id) WHERE source_id IS NOT NULL
      DO UPDATE SET
-       done = EXCLUDED.done,
+       done = (todos.done OR EXCLUDED.done),
        task = EXCLUDED.task,
        due = EXCLUDED.due,
        rubric = COALESCE(EXCLUDED.rubric, todos.rubric)

@@ -273,6 +273,33 @@ app.post('/api/todos/check-submissions', async (req, res) => {
     let updated = 0
     const courseAssignmentCache = {} // courseAppId -> assignments list
 
+    // Pre-fetch all grade names per course for fallback matching.
+    // If Brightspace dropbox submission detection misses, a graded item with a
+    // matching name means the assignment is effectively done.
+    const gradeNamesByCourse = {}
+    {
+      const { rows: gradeRows } = await db.pool.query(
+        `SELECT course_app_id, LOWER(TRIM(name)) AS name FROM grades WHERE user_id = $1`,
+        [uid]
+      )
+      for (const row of gradeRows) {
+        if (!gradeNamesByCourse[row.course_app_id]) gradeNamesByCourse[row.course_app_id] = new Set()
+        gradeNamesByCourse[row.course_app_id].add(row.name)
+      }
+    }
+
+    function matchesGradedItem(taskName, courseAppId) {
+      const set = gradeNamesByCourse[courseAppId]
+      if (!set) return false
+      const n = (taskName || '').replace(/^(Quiz: |Discussion: )/, '').trim().toLowerCase()
+      if (!n) return false
+      if (set.has(n)) return true
+      for (const g of set) {
+        if (g === n || g.includes(n) || n.includes(g)) return true
+      }
+      return false
+    }
+
     for (const task of pendingTasks) {
       let done = false
 
@@ -288,6 +315,11 @@ app.post('/api/todos/check-submissions', async (req, res) => {
             const topic = discussions.find(d => String(d.id) === parts.slice(3).join('-'))
             if (topic) done = await brightspace.fetchMyDiscussionPosts(parts[2], topic.forumId, topic.id, cookie)
           } catch (e) { /* skip */ }
+        }
+        // Fallback: if Brightspace says "not submitted" but there's a grade
+        // with a matching name, treat as done.
+        if (!done && matchesGradedItem(task.task, task.course_app_id)) {
+          done = true
         }
       } else {
         // No source_id — look up by matching task name to Brightspace assignments
@@ -321,6 +353,10 @@ app.post('/api/todos/check-submissions', async (req, res) => {
                 )
               }
             }
+          }
+          // Grade-name fallback even if no dropbox match was found
+          if (!done && matchesGradedItem(task.task, task.course_app_id)) {
+            done = true
           }
         } catch (e) {
           console.log(`[check-submissions] Lookup failed for "${task.task}":`, e.message)

@@ -299,8 +299,7 @@ export async function syncUserData(userId, cookie) {
       }
 
       // 5. Fetch assignments (dropbox folders) — these are real tasks with due dates
-      // SIMPLE RULE: due date passed = done. No fuzzy matching needed.
-      // Students either submitted or missed the deadline — either way it's not pending.
+      // Completion is determined by: submission detected OR name matches a graded item.
       try {
         const assignments = await brightspace.fetchAssignments(enrollment.brightspaceId, cookie)
         const now = new Date()
@@ -309,15 +308,18 @@ export async function syncUserData(userId, cookie) {
           if (assignment.isHidden) continue
 
           const dueDate = assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : null
+          const endDate = assignment.endDate ? new Date(assignment.endDate).toISOString().split('T')[0] : null
 
-          // No due date and no end date = skip (can't determine relevance)
-          if (!dueDate && !assignment.endDate) continue
+          // We now KEEP assignments with no date at all (common for papers / projects).
+          // They show up with no due date until the prof sets one or it gets graded.
+          const effectiveDate = dueDate || endDate
 
-          const effectiveDate = dueDate || new Date(assignment.endDate).toISOString().split('T')[0]
-          const daysUntil = (new Date(effectiveDate) - now) / (1000 * 60 * 60 * 24)
-
-          // Skip anything more than 60 days in the future (not relevant yet)
-          if (daysUntil > 60) continue
+          // Gate on "relevance" only when we have a date.
+          // Extended future window to 180 days so next-semester-ish items still appear.
+          if (effectiveDate) {
+            const daysUntil = (new Date(effectiveDate) - now) / (1000 * 60 * 60 * 24)
+            if (daysUntil > 180) continue
+          }
 
           // Check submission status + fetch rubric in parallel.
           // Rubric is best-effort (6s timeout); most assignments have none.
@@ -331,18 +333,32 @@ export async function syncUserData(userId, cookie) {
             rubricPromise,
           ])
 
-          // If past due and NOT submitted = overdue (still pending, high priority)
-          // If past due and submitted = done
-          const isDone = submitted
-          const isOverdue = daysUntil < 0 && !submitted
+          // Grade-name fallback — same approach we use for quizzes.
+          // If a graded item exists whose name matches the assignment, count it as done.
+          // This handles cases where the prof graded but dropbox submission wasn't detected.
+          let gradeMatched = false
+          const nameLower = (assignment.name || '').toLowerCase().trim()
+          if (nameLower) {
+            gradeMatched = [...gradedNames].some(gn =>
+              gn === nameLower || gn.includes(nameLower) || nameLower.includes(gn)
+            )
+          }
 
-          // Skip old submitted assignments (more than 7 days ago and done)
-          if (daysUntil < -7 && isDone) continue
+          const isDone = submitted || gradeMatched
+          const daysUntil = effectiveDate
+            ? (new Date(effectiveDate) - now) / (1000 * 60 * 60 * 24)
+            : null
+          const isOverdue = daysUntil !== null && daysUntil < 0 && !isDone
 
-          // Priority: overdue = high, due soon = high, far out = low
+          // Skip old completed assignments (more than 7 days ago and done)
+          if (daysUntil !== null && daysUntil < -7 && isDone) continue
+
+          // Priority: overdue = high, due soon = high, far out = low, no date = medium
           let priority = 'medium'
-          if (isOverdue || (daysUntil <= 2 && daysUntil >= 0)) priority = 'high'
-          else if (daysUntil > 7) priority = 'low'
+          if (daysUntil !== null) {
+            if (isOverdue || (daysUntil <= 2 && daysUntil >= 0)) priority = 'high'
+            else if (daysUntil > 7) priority = 'low'
+          }
 
           await db.upsertSyncedTodo(userId, {
             course: appId,

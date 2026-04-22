@@ -263,12 +263,29 @@ export async function fetchAssignmentRubrics(courseId, folderId, cookie) {
 }
 
 // ─── Check my submissions for an assignment ───
+// Brightspace returns a few different shapes depending on version + assignment
+// type, so we check all of them before giving up:
+//   1) Flat array of submission objects: [ { Id, SubmissionDate, ... } ]
+//   2) Nested per-user form: [ { Entity: {...}, Submissions: [ {...} ] } ]
+//   3) Plain empty array = truly not submitted
 export async function fetchMySubmissions(courseId, folderId, cookie) {
   try {
     const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/dropbox/folders/${folderId}/submissions/mysubmissions`, cookie)
-    return (data || []).length > 0
+    if (!Array.isArray(data) || data.length === 0) return false
+
+    for (const entry of data) {
+      if (!entry || typeof entry !== 'object') continue
+      // Nested form: { Submissions: [...] }
+      if (Array.isArray(entry.Submissions) && entry.Submissions.length > 0) return true
+      // Flat form: the entry itself is a submission record
+      if (entry.Id != null || entry.SubmissionId != null || entry.SubmissionDate) return true
+      // Some versions: { Files: [...] }
+      if (Array.isArray(entry.Files) && entry.Files.length > 0) return true
+    }
+    return false
   } catch (e) {
     // If endpoint doesn't exist or returns error, assume not submitted
+    console.log(`[brightspace] submission check failed for folder ${folderId}: ${e.message}`)
     return false
   }
 }
