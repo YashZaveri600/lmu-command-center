@@ -280,6 +280,24 @@ export async function syncUserData(userId, cookie) {
         // Do not push to results.errors — content sync is best-effort, never a hard failure
       }
 
+      // 4c. Fetch Brightspace calendar events — best-effort, 8s budget per course
+      try {
+        const eventsPromise = brightspace.fetchCalendarEvents(enrollment.brightspaceId, cookie)
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('calendar sync timeout')), 8_000)
+        )
+        const events = await Promise.race([eventsPromise, timeout])
+        if (Array.isArray(events)) {
+          await db.upsertCalendarEvents(userId, appId, events)
+          if (events.length > 0) {
+            console.log(`[sync] ${appId}: ${events.length} calendar events`)
+          }
+        }
+      } catch (e) {
+        console.error(`[sync] Skip calendar for ${appId}: ${e.message}`)
+        // Best-effort, not a hard failure
+      }
+
       // 5. Fetch assignments (dropbox folders) — these are real tasks with due dates
       // SIMPLE RULE: due date passed = done. No fuzzy matching needed.
       // Students either submitted or missed the deadline — either way it's not pending.

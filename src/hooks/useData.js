@@ -38,6 +38,7 @@ export function useSSE(onMessage) {
     es.addEventListener('notes', e => onMessage('notes', JSON.parse(e.data)))
     es.addEventListener('study-sessions', e => onMessage('study-sessions', JSON.parse(e.data)))
     es.addEventListener('course-content', e => onMessage('course-content', JSON.parse(e.data)))
+    es.addEventListener('calendar-events', e => onMessage('calendar-events', JSON.parse(e.data)))
     return () => es.close()
   }, [onMessage])
 }

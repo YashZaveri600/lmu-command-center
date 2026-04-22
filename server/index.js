@@ -350,6 +350,11 @@ app.get('/api/course-content', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+app.get('/api/calendar-events', async (req, res) => {
+  try { res.json(await db.getCalendarEvents(getUserId(req))) }
+  catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 app.get('/api/updates', async (req, res) => {
   try { res.json(await db.getUpdates(getUserId(req))) }
   catch (e) { res.status(500).json({ error: e.message }) }
@@ -565,13 +570,14 @@ app.post('/api/sync', async (req, res) => {
     }
 
     // Broadcast updates to any connected SSE clients
-    const [grades, updates, courses, todos, emails, courseContent] = await Promise.all([
+    const [grades, updates, courses, todos, emails, courseContent, calendarEvents] = await Promise.all([
       db.getGrades(uid),
       db.getUpdates(uid),
       db.getCourses(uid),
       db.getTodos(uid),
       db.getEmails(uid),
       db.getCourseContent(uid),
+      db.getCalendarEvents(uid),
     ])
     broadcast('grades', grades)
     broadcast('updates', updates)
@@ -579,6 +585,7 @@ app.post('/api/sync', async (req, res) => {
     broadcast('todos', todos)
     broadcast('emails', emails)
     broadcast('course-content', courseContent)
+    broadcast('calendar-events', calendarEvents)
 
     res.json({ ok: true, results, emailResults })
   } catch (e) {

@@ -81,6 +81,22 @@ CREATE TABLE IF NOT EXISTS course_content (
 );
 CREATE INDEX IF NOT EXISTS course_content_user_course_idx ON course_content(user_id, course_app_id);
 
+-- Calendar events (from Brightspace)
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  course_app_id VARCHAR(100),
+  bs_event_id VARCHAR(100),
+  title VARCHAR(500),
+  description TEXT,
+  start_date TIMESTAMP,
+  end_date TIMESTAMP,
+  location VARCHAR(255),
+  event_type VARCHAR(50),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS calendar_events_user_idx ON calendar_events(user_id, start_date);
+
 -- Announcements / updates
 CREATE TABLE IF NOT EXISTS announcements (
   id SERIAL PRIMARY KEY,

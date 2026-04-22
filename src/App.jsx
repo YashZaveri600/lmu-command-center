@@ -71,6 +71,7 @@ export default function App() {
 function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dark, toggleDark, mobileMenuOpen, setMobileMenuOpen }) {
   const { data: courses, setData: setCourses } = useAPI('courses')
   const { data: courseContent, setData: setCourseContent } = useAPI('course-content')
+  const { data: calendarEvents, setData: setCalendarEvents } = useAPI('calendar-events')
   const { data: updates, setData: setUpdates } = useAPI('updates')
   const { data: todos, setData: setTodos } = useAPI('todos')
   const { data: emails, setData: setEmails } = useAPI('emails')
@@ -82,9 +83,9 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
   const { data: semester } = useAPI('semester')
 
   const handleSSE = useCallback((type, data) => {
-    const setters = { updates: setUpdates, todos: setTodos, emails: setEmails, courses: setCourses, automations: setAutomations, grades: setGrades, notes: setNotes, 'study-sessions': setStudySessions, 'course-content': setCourseContent }
+    const setters = { updates: setUpdates, todos: setTodos, emails: setEmails, courses: setCourses, automations: setAutomations, grades: setGrades, notes: setNotes, 'study-sessions': setStudySessions, 'course-content': setCourseContent, 'calendar-events': setCalendarEvents }
     if (setters[type]) setters[type](data)
-  }, [setUpdates, setTodos, setEmails, setCourses, setAutomations, setGrades, setNotes, setStudySessions, setCourseContent])
+  }, [setUpdates, setTodos, setEmails, setCourses, setAutomations, setGrades, setNotes, setStudySessions, setCourseContent, setCalendarEvents])
 
   useSSE(handleSSE)
 
@@ -155,7 +156,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
         {page === 'grades' && <Grades grades={grades} courses={courses} setGrades={setGrades} />}
         {page === 'notes' && <Notes notes={notes} courses={courses} setNotes={setNotes} />}
         {page === 'study' && <StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} />}
-        {page === 'calendar' && <CalendarView updates={updates} todos={todos} courses={courses} semester={semester} />}
+        {page === 'calendar' && <CalendarView updates={updates} todos={todos} courses={courses} semester={semester} calendarEvents={calendarEvents} />}
         {page === 'settings' && <SettingsPage user={user} emailEnabled={emailEnabled} />}
       </main>
       <AiChat />

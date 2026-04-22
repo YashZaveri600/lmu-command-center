@@ -292,6 +292,25 @@ export async function fetchQuizAttempts(courseId, quizId, cookie) {
   }
 }
 
+// ─── Get calendar events for a course ───
+export async function fetchCalendarEvents(courseId, cookie) {
+  try {
+    const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/calendar/events/`, cookie)
+    return (data || []).map(ev => ({
+      id: ev.CalendarEventId || ev.Id,
+      title: ev.EventName || ev.Title || 'Untitled event',
+      description: ev.Description?.Html || ev.Description?.Text || '',
+      startDate: ev.StartDate || null,
+      endDate: ev.EndDate || null,
+      location: ev.Location || '',
+      eventType: ev.EventType || 'calendar',
+    }))
+  } catch (e) {
+    console.log(`[brightspace] No calendar events for course ${courseId}: ${e.message}`)
+    return []
+  }
+}
+
 // ─── Get course content modules (files, links, pages, videos) ───
 // Walks the content tree and returns a flat list with parent references.
 // Fetches sibling modules in parallel with a concurrency cap, bounded depth,
@@ -468,5 +487,6 @@ export default {
   fetchMyDiscussionPosts,
   fetchAnnouncements,
   fetchCourseContent,
+  fetchCalendarEvents,
   fetchWhoAmI,
 }

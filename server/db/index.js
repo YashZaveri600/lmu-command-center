@@ -37,6 +37,23 @@ pool.query('SELECT NOW()').then(async () => {
       )
     `)
     await pool.query(`CREATE INDEX IF NOT EXISTS course_content_user_course_idx ON course_content(user_id, course_app_id)`)
+    // Calendar events table (Feature 3)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        course_app_id VARCHAR(100),
+        bs_event_id VARCHAR(100),
+        title VARCHAR(500),
+        description TEXT,
+        start_date TIMESTAMP,
+        end_date TIMESTAMP,
+        location VARCHAR(255),
+        event_type VARCHAR(50),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS calendar_events_user_idx ON calendar_events(user_id, start_date)`)
     console.log('[db] Migrations complete')
   } catch (e) {
     console.log('[db] Migration note:', e.message)
@@ -306,6 +323,56 @@ async function upsertCourseContent(userId, appId, items) {
   } catch (e) {
     await client.query('ROLLBACK')
     throw e
+  } finally {
+    client.release()
+  }
+}
+
+// ─── Calendar Events (Brightspace) ───
+// Returns: [ { id, course, bsEventId, title, description, startDate, endDate, location, eventType } ]
+async function getCalendarEvents(userId) {
+  const { rows } = await q(
+    `SELECT id, course_app_id AS course, bs_event_id AS "bsEventId",
+            title, description, start_date AS "startDate", end_date AS "endDate",
+            location, event_type AS "eventType"
+     FROM calendar_events WHERE user_id = $1 ORDER BY start_date`,
+    [userId]
+  )
+  return rows.map(r => ({
+    ...r,
+    startDate: r.startDate ? r.startDate.toISOString() : null,
+    endDate: r.endDate ? r.endDate.toISOString() : null,
+  }))
+}
+
+async function upsertCalendarEvents(userId, appId, events) {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(
+      'DELETE FROM calendar_events WHERE user_id = $1 AND course_app_id = $2',
+      [userId, appId]
+    )
+    for (const e of events) {
+      await client.query(
+        `INSERT INTO calendar_events
+         (user_id, course_app_id, bs_event_id, title, description, start_date, end_date, location, event_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          userId, appId, String(e.id || ''),
+          (e.title || '').slice(0, 500),
+          e.description || '',
+          e.startDate ? new Date(e.startDate) : null,
+          e.endDate ? new Date(e.endDate) : null,
+          (e.location || '').slice(0, 255),
+          (e.eventType || 'calendar').slice(0, 50),
+        ]
+      )
+    }
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
   } finally {
     client.release()
   }
@@ -601,6 +668,7 @@ export default {
   getTodos, addTodo, updateTodo, deleteTodo, upsertSyncedTodo, markSyncedTodoDone,
   getUpdates, upsertUpdates,
   getCourseContent, upsertCourseContent,
+  getCalendarEvents, upsertCalendarEvents,
   getEmails, upsertEmails,
   getNotes, addNote, deleteNote,
   getStudySessions, addStudySession,

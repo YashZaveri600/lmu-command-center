@@ -59,7 +59,7 @@ function downloadICS(todos, updates, courses) {
   URL.revokeObjectURL(url)
 }
 
-export default function CalendarView({ updates, todos, courses, semester }) {
+export default function CalendarView({ updates, todos, courses, semester, calendarEvents }) {
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -69,7 +69,7 @@ export default function CalendarView({ updates, todos, courses, semester }) {
 
   const assignments = (updates || []).filter(u => u.type === 'assignment' || u.date)
 
-  // Build a map of date -> assignments
+  // Build a map of date -> items (assignments + Brightspace calendar events + pending todos)
   const dateAssignments = {}
   assignments.forEach(a => {
     const d = a.date || a.dueDate
@@ -77,6 +77,31 @@ export default function CalendarView({ updates, todos, courses, semester }) {
       if (!dateAssignments[d]) dateAssignments[d] = []
       dateAssignments[d].push(a)
     }
+  })
+  // Include pending todos with due dates
+  ;(todos || []).filter(t => t.due && !t.done).forEach(t => {
+    if (!dateAssignments[t.due]) dateAssignments[t.due] = []
+    dateAssignments[t.due].push({
+      id: `todo-${t.id}`,
+      course: t.course,
+      title: t.task,
+      urgency: t.priority === 'high' ? 'urgent' : null,
+      kind: 'todo',
+    })
+  })
+  // Include Brightspace calendar events
+  ;(calendarEvents || []).forEach(ev => {
+    if (!ev.startDate) return
+    const d = ev.startDate.split('T')[0]
+    if (!dateAssignments[d]) dateAssignments[d] = []
+    dateAssignments[d].push({
+      id: `event-${ev.id}`,
+      course: ev.course,
+      title: ev.title,
+      description: ev.description,
+      location: ev.location,
+      kind: 'event',
+    })
   })
 
   // Build holiday map
@@ -235,9 +260,26 @@ export default function CalendarView({ updates, todos, courses, semester }) {
 
           <div className="space-y-2">
             {selectedItems.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+              <div key={idx} className="flex items-start gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
                 <CourseBadge courseId={item.course} courses={courses} />
-                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{item.title}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{item.title}</span>
+                    {item.kind === 'event' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 font-medium">
+                        Event
+                      </span>
+                    )}
+                    {item.kind === 'todo' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 font-medium">
+                        Task
+                      </span>
+                    )}
+                  </div>
+                  {item.location && (
+                    <p className="text-xs text-gray-400 mt-0.5">{item.location}</p>
+                  )}
+                </div>
                 {item.urgency && (
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     item.urgency === 'urgent' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
