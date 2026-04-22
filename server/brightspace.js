@@ -215,6 +215,53 @@ export async function fetchAssignments(courseId, cookie) {
   }
 }
 
+// ─── Fetch rubrics attached to an assignment (dropbox folder) ───
+// Returns a normalized array [{ id, name, description, criteria: [{ name, description, levels: [{ name, points, description }] }] }]
+// Best-effort: returns [] on any error (most assignments don't have rubrics).
+export async function fetchAssignmentRubrics(courseId, folderId, cookie) {
+  try {
+    const summaries = await bsFetch(`/d2l/api/le/1.0/${courseId}/dropbox/folders/${folderId}/rubrics/`, cookie)
+    if (!Array.isArray(summaries) || summaries.length === 0) return []
+
+    // Each rubric summary may already include Criteria+Levels in some Valence versions,
+    // but most return just metadata so we fetch criteria separately for each rubric.
+    const results = []
+    for (const r of summaries) {
+      const rubricId = r.Id ?? r.RubricId
+      if (rubricId == null) continue
+      let criteriaData = r.Criteria
+      if (!Array.isArray(criteriaData)) {
+        try {
+          criteriaData = await bsFetch(`/d2l/api/lp/1.0/rubrics/${rubricId}/criteria/`, cookie)
+        } catch {
+          criteriaData = []
+        }
+      }
+
+      const criteria = (Array.isArray(criteriaData) ? criteriaData : []).map(c => ({
+        name: c.Name || c.CriterionName || 'Untitled criterion',
+        description: c.Description?.Html || c.Description?.Text || '',
+        levels: (Array.isArray(c.Levels) ? c.Levels : []).map(l => ({
+          name: l.Name || l.LevelName || '',
+          points: typeof l.Points === 'number' ? l.Points : (l.PointsNumerator ?? null),
+          description: l.Description?.Html || l.Description?.Text || '',
+        })),
+      }))
+
+      results.push({
+        id: rubricId,
+        name: r.Name || 'Rubric',
+        description: r.Description?.Html || r.Description?.Text || '',
+        criteria,
+      })
+    }
+    return results
+  } catch (e) {
+    // 404 / no rubrics attached is common and expected
+    return []
+  }
+}
+
 // ─── Check my submissions for an assignment ───
 export async function fetchMySubmissions(courseId, folderId, cookie) {
   try {
@@ -480,6 +527,7 @@ export default {
   fetchCategories,
   fetchGradeObjects,
   fetchAssignments,
+  fetchAssignmentRubrics,
   fetchMySubmissions,
   fetchQuizzes,
   fetchQuizAttempts,

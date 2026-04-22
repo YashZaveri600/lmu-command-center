@@ -319,12 +319,17 @@ export async function syncUserData(userId, cookie) {
           // Skip anything more than 60 days in the future (not relevant yet)
           if (daysUntil > 60) continue
 
-          // Check if submitted on Brightspace
-          const submitted = await brightspace.fetchMySubmissions(
-            enrollment.brightspaceId,
-            assignment.id,
-            cookie
-          )
+          // Check submission status + fetch rubric in parallel.
+          // Rubric is best-effort (6s timeout); most assignments have none.
+          const rubricPromise = Promise.race([
+            brightspace.fetchAssignmentRubrics(enrollment.brightspaceId, assignment.id, cookie),
+            new Promise(resolve => setTimeout(() => resolve([]), 6_000)),
+          ]).catch(() => [])
+
+          const [submitted, rubrics] = await Promise.all([
+            brightspace.fetchMySubmissions(enrollment.brightspaceId, assignment.id, cookie),
+            rubricPromise,
+          ])
 
           // If past due and NOT submitted = overdue (still pending, high priority)
           // If past due and submitted = done
@@ -347,6 +352,7 @@ export async function syncUserData(userId, cookie) {
             priority,
             source: 'brightspace',
             sourceId: `bs-assignment-${enrollment.brightspaceId}-${assignment.id}`,
+            rubric: Array.isArray(rubrics) && rubrics.length > 0 ? rubrics : null,
           })
           results.tasks++
           if (isDone) results.completed++

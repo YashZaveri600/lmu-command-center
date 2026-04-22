@@ -17,6 +17,8 @@ pool.query('SELECT NOW()').then(async () => {
   try {
     await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'manual'`)
     await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS source_id VARCHAR(200)`)
+    // Feature 4: rubric data (JSONB) for synced assignments
+    await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS rubric JSONB`)
     // Create unique index for upsert dedup (only on non-null source_id)
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS todos_user_source_id_idx ON todos(user_id, source_id) WHERE source_id IS NOT NULL`)
     // Course content table (Feature 1)
@@ -181,10 +183,10 @@ async function upsertGrades(userId, courseAppId, gradesData) {
 }
 
 // ─── Todos ───
-// Returns: [ { id, course, task, due, done, priority } ]
+// Returns: [ { id, course, task, due, done, priority, rubric } ]
 async function getTodos(userId) {
   const { rows } = await q(
-    `SELECT id, course_app_id AS course, task, due, done, priority, source
+    `SELECT id, course_app_id AS course, task, due, done, priority, source, rubric
      FROM todos WHERE user_id = $1 ORDER BY due ASC`,
     [userId]
   )
@@ -193,6 +195,7 @@ async function getTodos(userId) {
     id: `todo-${t.id}`,
     due: t.due ? t.due.toISOString().split('T')[0] : null,
     source: t.source || 'manual',
+    rubric: t.rubric || null,
   }))
 }
 
@@ -224,15 +227,21 @@ async function deleteTodo(userId, todoId) {
   await q('DELETE FROM todos WHERE user_id = $1 AND id = $2', [userId, dbId])
 }
 
-// Upsert a synced todo — inserts if source_id doesn't exist, updates done status if it does
+// Upsert a synced todo — inserts if source_id doesn't exist, updates on conflict.
+// Rubric (JSONB, optional) overwrites on update when provided.
 async function upsertSyncedTodo(userId, todo) {
+  const rubricJson = todo.rubric ? JSON.stringify(todo.rubric) : null
   const { rows } = await q(
-    `INSERT INTO todos (user_id, course_app_id, task, due, done, priority, source, source_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO todos (user_id, course_app_id, task, due, done, priority, source, source_id, rubric)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (user_id, source_id) WHERE source_id IS NOT NULL
-     DO UPDATE SET done = EXCLUDED.done, task = EXCLUDED.task, due = EXCLUDED.due
+     DO UPDATE SET
+       done = EXCLUDED.done,
+       task = EXCLUDED.task,
+       due = EXCLUDED.due,
+       rubric = COALESCE(EXCLUDED.rubric, todos.rubric)
      RETURNING id`,
-    [userId, todo.course, todo.task, todo.due || null, todo.done || false, todo.priority || 'medium', todo.source || 'brightspace', todo.sourceId]
+    [userId, todo.course, todo.task, todo.due || null, todo.done || false, todo.priority || 'medium', todo.source || 'brightspace', todo.sourceId, rubricJson]
   )
   return rows[0]?.id
 }
