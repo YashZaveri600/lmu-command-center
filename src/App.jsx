@@ -19,6 +19,7 @@ import SettingsPage from './pages/Settings'
 import AiChat from './components/AiChat'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastProvider } from './components/Toast'
+import SyncStatus from './components/SyncStatus'
 import { useAPI, useSSE } from './hooks/useData'
 import { useDarkMode } from './hooks/useDarkMode'
 
@@ -133,12 +134,18 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-base font-bold text-gray-900 dark:text-white">EduSync</h1>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-600 dark:text-gray-400">
           <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
             {mobileMenuOpen ? <path d="M6 6l12 12M6 18L18 6" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
           </svg>
         </button>
+        <h1 className="text-base font-bold text-gray-900 dark:text-white">EduSync</h1>
+        <SyncStatus />
+      </div>
+
+      {/* Desktop header (top bar visible on every page) */}
+      <div className="hidden lg:flex fixed top-0 right-0 z-20 px-6 py-3 bg-gray-50 dark:bg-gray-950">
+        <SyncStatus />
       </div>
 
       {/* Sidebar */}
