@@ -157,8 +157,8 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
       <main className="flex-1 p-4 pt-16 lg:pt-14 lg:pb-8 lg:px-8 max-w-6xl overflow-y-auto">
         {page !== 'briefing' && <SearchBar courses={courses} onNavigate={navigate} />}
 
-        {page === 'briefing' && <ErrorBoundary label="Daily Briefing"><DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} /></ErrorBoundary>}
-        {page === 'dashboard' && <ErrorBoundary label="Dashboard"><Dashboard updates={updates} todos={todos} emails={emails} courses={courses} courseContent={courseContent} onNavigate={navigate} /></ErrorBoundary>}
+        {page === 'briefing' && <ErrorBoundary label="Daily Briefing"><DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} grades={grades} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} /></ErrorBoundary>}
+        {page === 'dashboard' && <ErrorBoundary label="Dashboard"><Dashboard updates={updates} todos={todos} emails={emails} courses={courses} courseContent={courseContent} grades={grades} onNavigate={navigate} /></ErrorBoundary>}
         {page === 'updates' && <ErrorBoundary label="Brightspace Updates"><Updates updates={updates} courses={courses} /></ErrorBoundary>}
         {page === 'todos' && <ErrorBoundary label="Weekly To-Do"><Todos todos={todos} courses={courses} setTodos={setTodos} /></ErrorBoundary>}
         {page === 'emails' && <ErrorBoundary label="Professor Emails"><Emails emails={emails} courses={courses} /></ErrorBoundary>}

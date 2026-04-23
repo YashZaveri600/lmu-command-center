@@ -3,6 +3,7 @@ import { AlertTriangle, CheckSquare, Clock, Bell, ArrowRight, Timer, BookOpen, E
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
 import { SkelPage, SkelStatGrid } from '../components/Skeleton'
+import ActivityFeed from '../components/ActivityFeed'
 
 // Pick the best "syllabus" item for a course from the content tree
 function findSyllabus(courseContent, courseId) {
@@ -19,7 +20,7 @@ function findSyllabus(courseContent, courseId) {
   return null
 }
 
-export default function Dashboard({ updates, todos, emails, courses, courseContent, onNavigate }) {
+export default function Dashboard({ updates, todos, emails, courses, courseContent, grades, onNavigate }) {
   if (!updates || !todos || !emails) {
     return (
       <div className="space-y-6">
@@ -111,6 +112,16 @@ export default function Dashboard({ updates, todos, emails, courses, courseConte
       {courses && courses.length > 0 && (
         <SyllabiRow courses={courses} courseContent={courseContent} onNavigate={onNavigate} />
       )}
+
+      {/* Recent Activity Feed */}
+      <ActivityFeed
+        updates={updates}
+        grades={grades}
+        todos={todos}
+        courses={courses}
+        onNavigate={onNavigate}
+        limit={8}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming deadlines */}
