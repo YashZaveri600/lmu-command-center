@@ -4,6 +4,8 @@ import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import ConfirmDialog from '../components/ConfirmDialog'
+import { useToast } from '../components/Toast'
 
 const API = `http://${window.location.hostname}:3001/api`
 
@@ -31,6 +33,8 @@ export default function Notes({ notes, courses, setNotes }) {
   const [course, setCourse] = useState('')
   const [text, setText] = useState('')
   const [filterCourse, setFilterCourse] = useState('all')
+  const [confirm, setConfirm] = useState(null)
+  const toast = useToast()
 
   if (!notes || !courses) return <SkelPage rows={4} kind="card" />
 
@@ -53,10 +57,21 @@ export default function Notes({ notes, courses, setNotes }) {
     setText('')
   }
 
-  async function handleDelete(id) {
-    const res = await fetch(`${API}/notes/${id}`, { method: 'DELETE' })
-    const updated = await res.json()
-    setNotes(updated)
+  function handleDelete(id) {
+    const note = notes.find(n => n.id === id)
+    const preview = (note?.text || '').slice(0, 60) + (note?.text?.length > 60 ? '...' : '')
+    setConfirm({
+      title: 'Delete note?',
+      message: preview ? `"${preview}" will be removed permanently.` : 'This note will be removed permanently.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        const res = await fetch(`${API}/notes/${id}`, { method: 'DELETE' })
+        const updated = await res.json()
+        setNotes(updated)
+        toast.show('Note deleted', 'success')
+      },
+    })
   }
 
   return (
@@ -173,6 +188,8 @@ export default function Notes({ notes, courses, setNotes }) {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog data={confirm} onDismiss={() => setConfirm(null)} />
     </div>
   )
 }

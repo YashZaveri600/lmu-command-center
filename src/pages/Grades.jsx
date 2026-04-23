@@ -5,6 +5,8 @@ import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 import WhatIfCalculator from '../components/WhatIfCalculator'
 import { SkelPage } from '../components/Skeleton'
+import ConfirmDialog from '../components/ConfirmDialog'
+import { useToast } from '../components/Toast'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -76,6 +78,8 @@ export default function Grades({ grades, courses, setGrades }) {
   const [name, setName] = useState('')
   const [score, setScore] = useState('')
   const [maxScore, setMaxScore] = useState('100')
+  const [confirm, setConfirm] = useState(null)
+  const toast = useToast()
 
   if (!grades || !courses) return <SkelPage rows={4} kind="card" />
 
@@ -119,11 +123,24 @@ export default function Grades({ grades, courses, setGrades }) {
     setMaxScore('100')
   }
 
-  async function handleDelete(courseId, gradeId) {
-    await fetch(`${API}/grades/${courseId}/${gradeId}`, { method: 'DELETE' })
-    const res = await fetch(`${API}/grades`)
-    const updated = await res.json()
-    setGrades(updated)
+  function handleDelete(courseId, gradeId) {
+    // Look up grade name for the confirm dialog
+    const gradeList = (grades.courses?.[courseId]?.grades) || []
+    const g = gradeList.find(x => x.id === gradeId)
+    const name = g?.name || 'this grade'
+    setConfirm({
+      title: 'Delete grade?',
+      message: `"${name}" will be removed from your grade tracker. This only removes it locally — your Brightspace grade is unaffected.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await fetch(`${API}/grades/${courseId}/${gradeId}`, { method: 'DELETE' })
+        const res = await fetch(`${API}/grades`)
+        const updated = await res.json()
+        setGrades(updated)
+        toast.show('Grade deleted', 'success')
+      },
+    })
   }
 
   return (
@@ -373,6 +390,8 @@ export default function Grades({ grades, courses, setGrades }) {
           )
         })}
       </div>
+
+      <ConfirmDialog data={confirm} onDismiss={() => setConfirm(null)} />
     </div>
   )
 }

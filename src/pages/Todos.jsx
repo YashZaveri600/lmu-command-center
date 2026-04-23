@@ -3,6 +3,8 @@ import { Plus, Trash2, Zap, Bot, BookOpen, ChevronDown, ChevronRight, ClipboardL
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import ConfirmDialog from '../components/ConfirmDialog'
+import { useToast } from '../components/Toast'
 import { CheckCircle2 } from 'lucide-react'
 import { patchTodo, createTodo, deleteTodo } from '../hooks/useData'
 
@@ -13,6 +15,8 @@ export default function Todos({ todos, courses, setTodos }) {
   const [newDue, setNewDue] = useState('')
   const [newPriority, setNewPriority] = useState('medium')
   const [expandedId, setExpandedId] = useState(null)
+  const [confirm, setConfirm] = useState(null)
+  const toast = useToast()
 
   if (!todos || !courses) return <SkelPage rows={5} />
 
@@ -33,9 +37,20 @@ export default function Todos({ todos, courses, setTodos }) {
     setShowAdd(false)
   }
 
-  const handleDelete = async (id) => {
-    await deleteTodo(id)
-    setTodos(todos.filter(t => t.id !== id))
+  const handleDelete = (id) => {
+    const item = todos.find(t => t.id === id)
+    if (!item) return
+    setConfirm({
+      title: 'Delete task?',
+      message: `"${item.task}" will be removed permanently. You can't undo this.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteTodo(id)
+        setTodos(todos.filter(t => t.id !== id))
+        toast.show('Task deleted', 'success')
+      },
+    })
   }
 
   const priorityOrder = { high: 0, medium: 1, low: 2 }
@@ -130,6 +145,8 @@ export default function Todos({ todos, courses, setTodos }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog data={confirm} onDismiss={() => setConfirm(null)} />
     </div>
   )
 }
