@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { RefreshCw, Link2, CheckCircle, AlertCircle, XCircle, ExternalLink, Clock, Shield, Mail } from 'lucide-react'
+import { RefreshCw, Link2, CheckCircle, AlertCircle, XCircle, ExternalLink, Clock, Shield, Mail, Lock, Eye } from 'lucide-react'
 import { useToast } from '../components/Toast'
 
 const API = import.meta.env.DEV
@@ -101,8 +101,26 @@ export default function Settings({ user, emailEnabled }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Settings</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your connected accounts and sync preferences</p>
+      </div>
+
+      {/* Privacy transparency banner */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-white dark:bg-gray-800 rounded-lg flex-shrink-0">
+            <Shield size={18} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Your privacy</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-gray-600 dark:text-gray-300">
+              <div className="flex items-center gap-1.5"><Eye size={12} className="text-blue-500" /> Read-only access</div>
+              <div className="flex items-center gap-1.5"><Lock size={12} className="text-blue-500" /> Encrypted at rest</div>
+              <div className="flex items-center gap-1.5"><CheckCircle size={12} className="text-blue-500" /> Never shared</div>
+              <div className="flex items-center gap-1.5"><XCircle size={12} className="text-blue-500" /> No third parties</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Account Info */}
