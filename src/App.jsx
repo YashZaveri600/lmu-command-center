@@ -17,6 +17,7 @@ import CalendarView from './pages/CalendarView'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/Settings'
 import AiChat from './components/AiChat'
+import ErrorBoundary from './components/ErrorBoundary'
 import { useAPI, useSSE } from './hooks/useData'
 import { useDarkMode } from './hooks/useDarkMode'
 
@@ -144,20 +145,20 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
       <main className="flex-1 p-4 pt-16 lg:pt-6 lg:p-8 max-w-6xl overflow-y-auto">
         {page !== 'briefing' && <SearchBar courses={courses} onNavigate={navigate} />}
 
-        {page === 'briefing' && <DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} />}
-        {page === 'dashboard' && <Dashboard updates={updates} todos={todos} emails={emails} courses={courses} courseContent={courseContent} onNavigate={navigate} />}
-        {page === 'updates' && <Updates updates={updates} courses={courses} />}
-        {page === 'todos' && <Todos todos={todos} courses={courses} setTodos={setTodos} />}
-        {page === 'emails' && <Emails emails={emails} courses={courses} />}
-        {page === 'schedule' && <Schedule schedule={schedule} courses={courses} updates={updates} />}
-        {page === 'files' && <Files courses={courses} courseContent={courseContent} setCourses={setCourses} />}
-        {page === 'automations' && <Automations automations={automations} />}
-        {page === 'focus' && <FocusMode updates={updates} todos={todos} courses={courses} onNavigate={navigate} />}
-        {page === 'grades' && <Grades grades={grades} courses={courses} setGrades={setGrades} />}
-        {page === 'notes' && <Notes notes={notes} courses={courses} setNotes={setNotes} />}
-        {page === 'study' && <StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} />}
-        {page === 'calendar' && <CalendarView updates={updates} todos={todos} courses={courses} semester={semester} calendarEvents={calendarEvents} />}
-        {page === 'settings' && <SettingsPage user={user} emailEnabled={emailEnabled} />}
+        {page === 'briefing' && <ErrorBoundary label="Daily Briefing"><DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} /></ErrorBoundary>}
+        {page === 'dashboard' && <ErrorBoundary label="Dashboard"><Dashboard updates={updates} todos={todos} emails={emails} courses={courses} courseContent={courseContent} onNavigate={navigate} /></ErrorBoundary>}
+        {page === 'updates' && <ErrorBoundary label="Brightspace Updates"><Updates updates={updates} courses={courses} /></ErrorBoundary>}
+        {page === 'todos' && <ErrorBoundary label="Weekly To-Do"><Todos todos={todos} courses={courses} setTodos={setTodos} /></ErrorBoundary>}
+        {page === 'emails' && <ErrorBoundary label="Professor Emails"><Emails emails={emails} courses={courses} /></ErrorBoundary>}
+        {page === 'schedule' && <ErrorBoundary label="Class Schedule"><Schedule schedule={schedule} courses={courses} updates={updates} /></ErrorBoundary>}
+        {page === 'files' && <ErrorBoundary label="Course Files"><Files courses={courses} courseContent={courseContent} setCourses={setCourses} /></ErrorBoundary>}
+        {page === 'automations' && <ErrorBoundary label="Automations"><Automations automations={automations} /></ErrorBoundary>}
+        {page === 'focus' && <ErrorBoundary label="Focus Mode"><FocusMode updates={updates} todos={todos} courses={courses} onNavigate={navigate} /></ErrorBoundary>}
+        {page === 'grades' && <ErrorBoundary label="Grades & GPA"><Grades grades={grades} courses={courses} setGrades={setGrades} /></ErrorBoundary>}
+        {page === 'notes' && <ErrorBoundary label="Quick Notes"><Notes notes={notes} courses={courses} setNotes={setNotes} /></ErrorBoundary>}
+        {page === 'study' && <ErrorBoundary label="Study Timer"><StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} /></ErrorBoundary>}
+        {page === 'calendar' && <ErrorBoundary label="Calendar"><CalendarView updates={updates} todos={todos} courses={courses} semester={semester} calendarEvents={calendarEvents} /></ErrorBoundary>}
+        {page === 'settings' && <ErrorBoundary label="Settings"><SettingsPage user={user} emailEnabled={emailEnabled} /></ErrorBoundary>}
       </main>
       <AiChat />
     </div>
