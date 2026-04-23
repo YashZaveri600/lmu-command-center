@@ -4,7 +4,9 @@ import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
 
-const API = `http://${window.location.hostname}:3001/api`
+const API = import.meta.env.DEV
+  ? `http://${window.location.hostname}:3001/api`
+  : '/api'
 
 const PRESETS = [
   { label: '25 min', seconds: 25 * 60 },
@@ -48,6 +50,7 @@ export default function StudyTimer({ studySessions, courses, setStudySessions })
       fetch(`${API}/study-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ course: selectedCourse, duration }),
       })
         .then(r => r.json())

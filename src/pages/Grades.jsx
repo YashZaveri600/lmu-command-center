@@ -109,19 +109,29 @@ export default function Grades({ grades, courses, setGrades }) {
   async function handleAdd(e) {
     e.preventDefault()
     if (!selectedCourse || !category || !score || !maxScore) return
-    const res = await fetch(`${API}/grades`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ courseId: selectedCourse, category, score: Number(score), maxScore: Number(maxScore), name: name || category }),
-    })
-    const updated = await res.json()
-    setGrades(updated)
-    setShowForm(false)
-    setSelectedCourse('')
-    setCategory('')
-    setName('')
-    setScore('')
-    setMaxScore('100')
+    try {
+      const res = await fetch(`${API}/grades`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ courseId: selectedCourse, category, score: Number(score), maxScore: Number(maxScore), name: name || category }),
+      })
+      if (!res.ok) {
+        toast.show(`Failed to add grade (${res.status})`, 'error', 5000)
+        return
+      }
+      const updated = await res.json()
+      setGrades(updated)
+      setShowForm(false)
+      setSelectedCourse('')
+      setCategory('')
+      setName('')
+      setScore('')
+      setMaxScore('100')
+      toast.show('Grade added', 'success')
+    } catch {
+      toast.show('Failed to add grade', 'error', 5000)
+    }
   }
 
   function handleDelete(courseId, gradeId) {
@@ -135,11 +145,22 @@ export default function Grades({ grades, courses, setGrades }) {
       confirmLabel: 'Delete',
       variant: 'danger',
       onConfirm: async () => {
-        await fetch(`${API}/grades/${courseId}/${gradeId}`, { method: 'DELETE' })
-        const res = await fetch(`${API}/grades`)
-        const updated = await res.json()
-        setGrades(updated)
-        toast.show('Grade deleted', 'success')
+        try {
+          const delRes = await fetch(`${API}/grades/${courseId}/${gradeId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+          if (!delRes.ok) {
+            toast.show(`Failed to delete grade (${delRes.status})`, 'error', 5000)
+            return
+          }
+          const res = await fetch(`${API}/grades`, { credentials: 'include' })
+          const updated = await res.json()
+          setGrades(updated)
+          toast.show('Grade deleted', 'success')
+        } catch {
+          toast.show('Failed to delete grade', 'error', 5000)
+        }
       },
     })
   }

@@ -7,7 +7,9 @@ import EmptyState from '../components/EmptyState'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 
-const API = `http://${window.location.hostname}:3001/api`
+const API = import.meta.env.DEV
+  ? `http://${window.location.hostname}:3001/api`
+  : '/api'
 
 function relativeTime(dateStr) {
   const now = new Date()
@@ -45,16 +47,26 @@ export default function Notes({ notes, courses, setNotes }) {
   async function handleAdd(e) {
     e.preventDefault()
     if (!course || !text.trim()) return
-    const res = await fetch(`${API}/notes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course, text: text.trim() }),
-    })
-    const updated = await res.json()
-    setNotes(updated)
-    setShowForm(false)
-    setCourse('')
-    setText('')
+    try {
+      const res = await fetch(`${API}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ course, text: text.trim() }),
+      })
+      if (!res.ok) {
+        toast.show(`Failed to save note (${res.status})`, 'error', 5000)
+        return
+      }
+      const updated = await res.json()
+      setNotes(updated)
+      setShowForm(false)
+      setCourse('')
+      setText('')
+      toast.show('Note saved', 'success')
+    } catch (err) {
+      toast.show('Failed to save note', 'error', 5000)
+    }
   }
 
   function handleDelete(id) {
@@ -66,10 +78,21 @@ export default function Notes({ notes, courses, setNotes }) {
       confirmLabel: 'Delete',
       variant: 'danger',
       onConfirm: async () => {
-        const res = await fetch(`${API}/notes/${id}`, { method: 'DELETE' })
-        const updated = await res.json()
-        setNotes(updated)
-        toast.show('Note deleted', 'success')
+        try {
+          const res = await fetch(`${API}/notes/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+          if (!res.ok) {
+            toast.show(`Failed to delete (${res.status})`, 'error', 5000)
+            return
+          }
+          const updated = await res.json()
+          setNotes(updated)
+          toast.show('Note deleted', 'success')
+        } catch {
+          toast.show('Failed to delete note', 'error', 5000)
+        }
       },
     })
   }
