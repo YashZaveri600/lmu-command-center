@@ -5,6 +5,7 @@ import {
   RefreshCw, Search, ExternalLink, Download, Star, CheckCircle2, AlertCircle,
   Presentation, Sheet, Music, Archive,
 } from 'lucide-react'
+import { SkelPage } from '../components/Skeleton'
 
 // API base — mirrors the convention used elsewhere in the app.
 const API = import.meta.env.DEV
@@ -241,12 +242,7 @@ export default function Files({ courses, courseContent, setCourses }) {
   }, [courseContent])
 
   if (!courses || !courseContent) {
-    return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Course Files</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading content from Brightspace...</p>
-      </div>
-    )
+    return <SkelPage rows={4} kind="card" />
   }
 
   // Filter to only courses that have content

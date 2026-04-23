@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { AlertTriangle, CheckSquare, Clock, Bell, ArrowRight, Timer, BookOpen, ExternalLink } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
+import { SkelPage, SkelStatGrid } from '../components/Skeleton'
 
 // Pick the best "syllabus" item for a course from the content tree
 function findSyllabus(courseContent, courseId) {
@@ -19,7 +20,18 @@ function findSyllabus(courseContent, courseId) {
 }
 
 export default function Dashboard({ updates, todos, emails, courses, courseContent, onNavigate }) {
-  if (!updates || !todos || !emails) return null
+  if (!updates || !todos || !emails) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="h-7 w-40 bg-gray-200 dark:bg-gray-700/60 animate-pulse rounded" />
+          <div className="h-3 w-64 bg-gray-200 dark:bg-gray-700/60 animate-pulse rounded" />
+        </div>
+        <SkelStatGrid />
+        <SkelPage title={false} rows={3} />
+      </div>
+    )
+  }
 
   const urgentItems = updates.filter(u => u.urgency === 'urgent')
   const pendingTodos = todos.filter(t => !t.done)

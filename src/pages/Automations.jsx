@@ -1,8 +1,10 @@
 import React from 'react'
 import { Zap, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { SkelPage } from '../components/Skeleton'
 
 export default function Automations({ automations }) {
-  if (!automations) return null
+  if (!automations) return <SkelPage rows={3} kind="card" />
+
 
   return (
     <div className="space-y-6">

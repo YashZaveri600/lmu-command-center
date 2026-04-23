@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Sun, Sunset, Moon, Flame, Calendar, BookOpen, Mail, CheckSquare, TrendingUp, Sparkles, Loader2 } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+import { Skel, SkelStatGrid, SkelPage } from '../components/Skeleton'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -46,7 +47,22 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
       .finally(() => setLoadingBriefing(false))
   }, [courses?.length])
 
-  if (!courses) return null
+  if (!courses) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skel className="h-14 w-14 rounded-full" />
+          <div className="space-y-2">
+            <Skel className="h-8 w-64" />
+            <Skel className="h-3 w-48" />
+          </div>
+        </div>
+        <SkelStatGrid />
+        <SkelPage title={false} rows={3} kind="card" />
+      </div>
+    )
+  }
+
 
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]

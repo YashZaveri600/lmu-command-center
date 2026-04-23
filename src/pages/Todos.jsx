@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Trash2, Zap, Bot, BookOpen, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
+import { SkelPage } from '../components/Skeleton'
 import { patchTodo, createTodo, deleteTodo } from '../hooks/useData'
 
 export default function Todos({ todos, courses, setTodos }) {
@@ -11,7 +12,8 @@ export default function Todos({ todos, courses, setTodos }) {
   const [newPriority, setNewPriority] = useState('medium')
   const [expandedId, setExpandedId] = useState(null)
 
-  if (!todos || !courses) return null
+  if (!todos || !courses) return <SkelPage rows={5} />
+
 
   const toggle = async (id) => {
     const todo = todos.find(t => t.id === id)

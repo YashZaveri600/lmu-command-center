@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 import WhatIfCalculator from '../components/WhatIfCalculator'
+import { SkelPage } from '../components/Skeleton'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -76,7 +77,8 @@ export default function Grades({ grades, courses, setGrades }) {
   const [score, setScore] = useState('')
   const [maxScore, setMaxScore] = useState('100')
 
-  if (!grades || !courses) return null
+  if (!grades || !courses) return <SkelPage rows={4} kind="card" />
+
 
   const courseWeights = grades.courses || {}
   const allGrades = {}

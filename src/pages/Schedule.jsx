@@ -1,11 +1,13 @@
 import React from 'react'
 import { getCourseInfo } from '../hooks/useData'
+import { SkelPage } from '../components/Skeleton'
 
 const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const dayFullNames = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday' }
 
 export default function Schedule({ schedule, courses, updates }) {
-  if (!schedule || !courses) return null
+  if (!schedule || !courses) return <SkelPage rows={5} kind="card" />
+
 
   const today = new Date()
   const todayDay = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][today.getDay()]

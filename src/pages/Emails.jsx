@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import { AlertCircle, Mail } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
+import { SkelPage } from '../components/Skeleton'
 
 export default function Emails({ emails, courses }) {
   const [expanded, setExpanded] = useState(null)
   const [filterCourse, setFilterCourse] = useState('all')
 
-  if (!emails || !courses) return null
+  if (!emails || !courses) return <SkelPage rows={6} />
+
 
   const filtered = filterCourse === 'all'
     ? emails

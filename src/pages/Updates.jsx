@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
+import { SkelPage } from '../components/Skeleton'
 
 // Strip links from Brightspace HTML but keep the text content
 function cleanBodyHtml(html) {
@@ -13,7 +14,8 @@ export default function Updates({ updates, courses }) {
   const [courseFilter, setCourseFilter] = useState('all')
   const [expanded, setExpanded] = useState(null)
 
-  if (!updates || !courses) return null
+  if (!updates || !courses) return <SkelPage rows={6} />
+
 
   // Only show announcements from current courses (filter out old/junk course IDs)
   const courseIds = new Set(courses.map(c => c.id))

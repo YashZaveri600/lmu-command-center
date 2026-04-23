@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+import { SkelPage } from '../components/Skeleton'
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -65,7 +66,8 @@ export default function CalendarView({ updates, todos, courses, semester, calend
   const [viewMonth, setViewMonth] = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState(null)
 
-  if (!courses) return null
+  if (!courses) return <SkelPage rows={2} kind="card" />
+
 
   const assignments = (updates || []).filter(u => u.type === 'assignment' || u.date)
 

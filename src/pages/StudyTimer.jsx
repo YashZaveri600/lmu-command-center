@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Play, Pause, RotateCcw, Clock, Flame, BookOpen } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+import { SkelPage } from '../components/Skeleton'
 
 const API = `http://${window.location.hostname}:3001/api`
 
@@ -75,7 +76,8 @@ export default function StudyTimer({ studySessions, courses, setStudySessions })
     clearInterval(intervalRef.current)
   }
 
-  if (!courses) return null
+  if (!courses) return <SkelPage rows={3} kind="card" />
+
 
   const sessions = studySessions || {}
   const todaySessions = sessions.sessions

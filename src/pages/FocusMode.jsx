@@ -2,9 +2,11 @@ import React from 'react'
 import { Target } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
+import { SkelPage } from '../components/Skeleton'
 
 export default function FocusMode({ updates, todos, courses }) {
-  if (!updates || !todos || !courses) return null
+  if (!updates || !todos || !courses) return <SkelPage rows={4} />
+
 
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]

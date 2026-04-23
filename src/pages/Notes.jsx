@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Plus, Trash2, StickyNote, Filter } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+import { SkelPage } from '../components/Skeleton'
 
 const API = `http://${window.location.hostname}:3001/api`
 
@@ -30,7 +31,8 @@ export default function Notes({ notes, courses, setNotes }) {
   const [text, setText] = useState('')
   const [filterCourse, setFilterCourse] = useState('all')
 
-  if (!notes || !courses) return null
+  if (!notes || !courses) return <SkelPage rows={4} kind="card" />
+
 
   const sortedNotes = [...notes].sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
   const filteredNotes = filterCourse === 'all' ? sortedNotes : sortedNotes.filter(n => n.course === filterCourse)
