@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { Plus, Trash2, Zap, Bot, BookOpen, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { CheckCircle2 } from 'lucide-react'
 import { patchTodo, createTodo, deleteTodo } from '../hooks/useData'
 
 export default function Todos({ todos, courses, setTodos }) {
@@ -91,15 +93,23 @@ export default function Todos({ todos, courses, setTodos }) {
       )}
 
       <div className="space-y-2">
-        {pending.map(item => (
-          <TodoItem
-            key={item.id} item={item} courses={courses}
-            onToggle={toggle} onDelete={handleDelete}
-            priorityColors={priorityColors}
-            expanded={expandedId === item.id}
-            onExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+        {pending.length === 0 ? (
+          <EmptyState
+            icon={<CheckCircle2 size={22} />}
+            title="All caught up"
+            message="No pending tasks. Add one above or wait for Brightspace to sync something."
           />
-        ))}
+        ) : (
+          pending.map(item => (
+            <TodoItem
+              key={item.id} item={item} courses={courses}
+              onToggle={toggle} onDelete={handleDelete}
+              priorityColors={priorityColors}
+              expanded={expandedId === item.id}
+              onExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+            />
+          ))
+        )}
       </div>
 
       {completed.length > 0 && (

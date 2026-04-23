@@ -1,6 +1,7 @@
 import React from 'react'
 import { Zap, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { SkelPage } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 export default function Automations({ automations }) {
   if (!automations) return <SkelPage rows={3} kind="card" />
@@ -12,6 +13,14 @@ export default function Automations({ automations }) {
       <p className="text-sm text-gray-500 dark:text-gray-400">
         Status of your scheduled Claude Cowork tasks.
       </p>
+
+      {automations.length === 0 && (
+        <EmptyState
+          icon={<Zap size={22} />}
+          title="No automations set up"
+          message="Scheduled background tasks will appear here once they're configured."
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {automations.map(auto => (

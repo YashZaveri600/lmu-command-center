@@ -3,6 +3,7 @@ import { Plus, Trash2, StickyNote, Filter } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 const API = `http://${window.location.hostname}:3001/api`
 
@@ -141,10 +142,11 @@ export default function Notes({ notes, courses, setNotes }) {
       {/* Notes List */}
       <div className="space-y-3">
         {filteredNotes.length === 0 && (
-          <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-            <StickyNote size={40} className="mx-auto mb-3 opacity-50" />
-            <p>No notes yet. Create your first one!</p>
-          </div>
+          <EmptyState
+            icon={<StickyNote size={22} />}
+            title="No notes yet"
+            message="Tap Add Note above to jot down a thought, reminder, or quick study point."
+          />
         )}
         {filteredNotes.map(note => (
           <div

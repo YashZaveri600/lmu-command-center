@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { AlertCircle, Mail } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 export default function Emails({ emails, courses }) {
   const [expanded, setExpanded] = useState(null)
@@ -39,18 +40,19 @@ export default function Emails({ emails, courses }) {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          <Mail size={48} className="mx-auto mb-4 opacity-50" />
-          {emails.length === 0 ? (
-            <>
-              <p className="text-lg font-medium">No emails synced yet</p>
-              <p className="text-sm mt-2">Hit Sync in Settings to pull professor emails from your Microsoft account.</p>
-              <p className="text-xs mt-1 text-gray-400">You may need to re-login to grant email access.</p>
-            </>
-          ) : (
-            <p className="text-lg font-medium">No emails match this filter</p>
-          )}
-        </div>
+        emails.length === 0 ? (
+          <EmptyState
+            icon={<Mail size={22} />}
+            title="No emails synced yet"
+            message="Connect email access in Settings to pull professor emails from your Microsoft account. Only messages from .edu senders are shown."
+          />
+        ) : (
+          <EmptyState
+            icon={<Mail size={22} />}
+            title="No emails match this filter"
+            message="Try switching to All Emails or another course."
+          />
+        )
       ) : (
         <div className="space-y-3">
           {sorted.map(email => (

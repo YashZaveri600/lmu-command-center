@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
 import { SkelPage } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { Bell } from 'lucide-react'
 
 // Strip links from Brightspace HTML but keep the text content
 function cleanBodyHtml(html) {
@@ -61,7 +63,15 @@ export default function Updates({ updates, courses }) {
 
       <div className="space-y-3">
         {filtered.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No updates found.</p>
+          <EmptyState
+            icon={<Bell size={22} />}
+            title="No announcements"
+            message={
+              filter !== 'all' || courseFilter !== 'all'
+                ? 'Nothing matches the current filters. Try clearing them.'
+                : 'Professors haven\'t posted any announcements yet, or sync is still running.'
+            }
+          />
         )}
         {filtered.map(item => {
           const isOpen = expanded === item.id
