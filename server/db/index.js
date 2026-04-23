@@ -19,6 +19,8 @@ pool.query('SELECT NOW()').then(async () => {
     await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS source_id VARCHAR(200)`)
     // Feature 4: rubric data (JSONB) for synced assignments
     await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS rubric JSONB`)
+    // Feature 5: professor feedback on graded items
+    await pool.query(`ALTER TABLE grades ADD COLUMN IF NOT EXISTS feedback_text TEXT`)
     // Create unique index for upsert dedup (only on non-null source_id)
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS todos_user_source_id_idx ON todos(user_id, source_id) WHERE source_id IS NOT NULL`)
     // Course content table (Feature 1)
@@ -107,7 +109,7 @@ async function getGrades(userId) {
 
   // Get all grades
   const { rows: grades } = await q(
-    `SELECT course_app_id, brightspace_id, category, name, score, max_score AS "maxScore", date
+    `SELECT course_app_id, brightspace_id, category, name, score, max_score AS "maxScore", date, feedback_text
      FROM grades WHERE user_id = $1 ORDER BY date DESC`,
     [userId]
   )
@@ -120,6 +122,7 @@ async function getGrades(userId) {
       score: parseFloat(g.score),
       maxScore: parseFloat(g.maxScore),
       date: g.date ? g.date.toISOString().split('T')[0] : null,
+      feedback: g.feedback_text || null,
     })
   }
 
@@ -166,9 +169,9 @@ async function upsertGrades(userId, courseAppId, gradesData) {
       await client.query('DELETE FROM grades WHERE user_id = $1 AND course_app_id = $2', [userId, courseAppId])
       for (const g of gradesData.grades) {
         await client.query(
-          `INSERT INTO grades (user_id, course_app_id, brightspace_id, category, name, score, max_score, date)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [userId, courseAppId, g.id || null, g.category, g.name, g.score, g.maxScore || 100, g.date || new Date()]
+          `INSERT INTO grades (user_id, course_app_id, brightspace_id, category, name, score, max_score, date, feedback_text)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [userId, courseAppId, g.id || null, g.category, g.name, g.score, g.maxScore || 100, g.date || new Date(), g.feedback || null]
         )
       }
     }

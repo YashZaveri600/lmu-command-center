@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Trash2, TrendingUp, Award } from 'lucide-react'
+import { Plus, Trash2, TrendingUp, Award, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
@@ -79,6 +79,7 @@ export default function Grades({ grades, courses, setGrades }) {
   const [score, setScore] = useState('')
   const [maxScore, setMaxScore] = useState('100')
   const [confirm, setConfirm] = useState(null)
+  const [expandedFeedback, setExpandedFeedback] = useState(null) // grade id whose feedback is open
   const toast = useToast()
 
   if (!grades || !courses) return <SkelPage rows={4} kind="card" />
@@ -367,26 +368,54 @@ export default function Grades({ grades, courses, setGrades }) {
               {/* Individual grades */}
               {courseGradeList.length > 0 && (
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-3 space-y-2">
-                  {courseGradeList.map(g => (
-                    <div key={g.id} className="flex items-center justify-between text-sm p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <div className="flex items-center gap-3">
-                        <span className="text-gray-900 dark:text-white font-medium">{g.name}</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">{g.category}</span>
+                  {courseGradeList.map(g => {
+                    const hasFeedback = Boolean(g.feedback && g.feedback.trim())
+                    const isFeedbackOpen = expandedFeedback === g.id
+                    return (
+                      <div key={g.id} className="rounded">
+                        <div className="flex items-center justify-between text-sm p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="text-gray-900 dark:text-white font-medium truncate">{g.name}</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{g.category}</span>
+                            {hasFeedback && (
+                              <button
+                                onClick={() => setExpandedFeedback(isFeedbackOpen ? null : g.id)}
+                                title={isFeedbackOpen ? 'Hide professor feedback' : 'Show professor feedback'}
+                                className="flex items-center gap-1 text-[10px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex-shrink-0"
+                              >
+                                <MessageSquare size={10} />
+                                FEEDBACK
+                                {isFeedbackOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="font-mono text-gray-700 dark:text-gray-300">
+                              {g.score}/{g.maxScore}
+                              <span className="text-gray-400 ml-1">({((g.score / g.maxScore) * 100).toFixed(0)}%)</span>
+                            </span>
+                            <button
+                              onClick={() => handleDelete(courseId, g.id)}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        {hasFeedback && isFeedbackOpen && (
+                          <div className="ml-2 mb-2 mt-1 bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-400 dark:border-blue-600 rounded px-3 py-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
+                              <MessageSquare size={10} /> Professor feedback
+                            </p>
+                            <div
+                              className="text-sm text-gray-700 dark:text-gray-200 prose prose-sm dark:prose-invert max-w-none [&_a]:pointer-events-none [&_a]:text-gray-700 dark:[&_a]:text-gray-200 [&_a]:no-underline"
+                              dangerouslySetInnerHTML={{ __html: stripGradeFeedbackLinks(g.feedback) }}
+                            />
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-gray-700 dark:text-gray-300">
-                          {g.score}/{g.maxScore}
-                          <span className="text-gray-400 ml-1">({((g.score / g.maxScore) * 100).toFixed(0)}%)</span>
-                        </span>
-                        <button
-                          onClick={() => handleDelete(courseId, g.id)}
-                          className="text-red-400 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -397,4 +426,12 @@ export default function Grades({ grades, courses, setGrades }) {
       <ConfirmDialog data={confirm} onDismiss={() => setConfirm(null)} />
     </div>
   )
+}
+
+// Strip anchor tags from professor feedback HTML — same safety approach as
+// Updates + rubrics. Prevents links from hijacking clicks or rendering as
+// broken links on our domain.
+function stripGradeFeedbackLinks(html) {
+  if (!html) return ''
+  return html.replace(/<a\b[^>]*>(.*?)<\/a>/gi, '$1')
 }

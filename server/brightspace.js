@@ -150,16 +150,30 @@ export async function fetchEnrollments(cookie) {
 // ─── Get grades for a course ───
 export async function fetchGrades(courseId, cookie) {
   const data = await bsFetch(`/d2l/api/le/1.0/${courseId}/grades/values/myGradeValues/`, cookie)
-  return (data || []).map(g => ({
-    id: g.GradeObjectIdentifier,
-    name: g.GradeObjectName,
-    type: g.GradeObjectTypeName,
-    points: g.PointsNumerator,
-    maxPoints: g.PointsDenominator,
-    weight: g.WeightedNumerator,
-    maxWeight: g.WeightedDenominator,
-    date: g.LastModified || null,
-  }))
+  return (data || []).map(g => {
+    // Brightspace returns comments as { Html: "...", Text: "..." } objects.
+    // Prefer HTML when present (it preserves basic formatting); fall back to Text.
+    const commentsHtml = g.Comments?.Html || null
+    const commentsText = g.Comments?.Text || null
+    // Also check PrivateComments which some instructors use for feedback.
+    const privateHtml = g.PrivateComments?.Html || null
+    const privateText = g.PrivateComments?.Text || null
+    // Choose the richest non-empty feedback we've got.
+    let feedback = commentsHtml || privateHtml || commentsText || privateText || null
+    if (feedback && typeof feedback === 'string' && !feedback.trim()) feedback = null
+
+    return {
+      id: g.GradeObjectIdentifier,
+      name: g.GradeObjectName,
+      type: g.GradeObjectTypeName,
+      points: g.PointsNumerator,
+      maxPoints: g.PointsDenominator,
+      weight: g.WeightedNumerator,
+      maxWeight: g.WeightedDenominator,
+      date: g.LastModified || null,
+      feedback,
+    }
+  })
 }
 
 // ─── Get grade categories/weights for a course ───

@@ -196,6 +196,7 @@ export async function syncUserData(userId, cookie) {
             score: g.points ?? 0,
             maxScore: g.maxPoints ?? 100,
             date: g.date ? new Date(g.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            feedback: g.feedback || null,
           }))
 
         // Collect graded names for completion detection in step 5
