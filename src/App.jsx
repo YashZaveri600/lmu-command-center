@@ -14,6 +14,7 @@ import Grades from './pages/Grades'
 import Notes from './pages/Notes'
 import StudyTimer from './pages/StudyTimer'
 import CalendarView from './pages/CalendarView'
+import CourseDetail from './pages/CourseDetail'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/Settings'
 import AiChat from './components/AiChat'
@@ -76,6 +77,7 @@ export default function App() {
 }
 
 function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dark, toggleDark, mobileMenuOpen, setMobileMenuOpen }) {
+  const [selectedCourseId, setSelectedCourseId] = useState(null)
   const { data: courses, setData: setCourses } = useAPI('courses')
   const { data: courseContent, setData: setCourseContent } = useAPI('course-content')
   const { data: calendarEvents, setData: setCalendarEvents } = useAPI('calendar-events')
@@ -120,8 +122,14 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
     document.title = pending > 0 ? `(${pending}) EduSync` : 'EduSync'
   }, [todos])
 
+  // navigate('page') for top-level pages; navigate({ page: 'course', courseId }) for course details
   const navigate = (p) => {
-    setPage(p)
+    if (typeof p === 'object' && p !== null) {
+      if (p.courseId) setSelectedCourseId(p.courseId)
+      setPage(p.page || 'course')
+    } else {
+      setPage(p)
+    }
     setMobileMenuOpen(false)
   }
 
@@ -150,7 +158,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
 
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-20 transform transition-transform duration-200 lg:relative lg:transform-none ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <Sidebar active={page} onNavigate={navigate} dark={dark} toggleDark={toggleDark} urgentCount={urgentCount} streak={streak} semesterProgress={semesterProgress} user={user} onLogout={handleLogout} />
+        <Sidebar active={page} activeCourseId={selectedCourseId} courses={courses} onNavigate={navigate} dark={dark} toggleDark={toggleDark} urgentCount={urgentCount} streak={streak} semesterProgress={semesterProgress} user={user} onLogout={handleLogout} />
       </div>
       {mobileMenuOpen && <div className="fixed inset-0 bg-black/30 z-10 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
 
@@ -171,6 +179,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
         {page === 'study' && <ErrorBoundary label="Study Timer"><StudyTimer studySessions={studySessions} courses={courses} setStudySessions={setStudySessions} /></ErrorBoundary>}
         {page === 'calendar' && <ErrorBoundary label="Calendar"><CalendarView updates={updates} todos={todos} courses={courses} semester={semester} calendarEvents={calendarEvents} /></ErrorBoundary>}
         {page === 'settings' && <ErrorBoundary label="Settings"><SettingsPage user={user} emailEnabled={emailEnabled} /></ErrorBoundary>}
+        {page === 'course' && <ErrorBoundary label="Course Detail"><CourseDetail courseId={selectedCourseId} courses={courses} updates={updates} todos={todos} grades={grades} courseContent={courseContent} calendarEvents={calendarEvents} emails={emails} onNavigate={navigate} /></ErrorBoundary>}
       </main>
       <AiChat />
     </div>
