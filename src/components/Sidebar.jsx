@@ -37,7 +37,7 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function Sidebar({ active, activeCourseId, courses = [], onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress, user, onLogout }) {
+export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress, user, onLogout }) {
   return (
     <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0">
       {/* Brand */}
@@ -109,35 +109,6 @@ export default function Sidebar({ active, activeCourseId, courses = [], onNaviga
             })}
           </div>
         ))}
-
-        {/* My Courses — one entry per enrolled course, click to open its detail page */}
-        {courses.length > 0 && (
-          <div className="mt-3">
-            <div className="px-5 py-1 text-[10px] uppercase font-semibold tracking-wide text-gray-400 dark:text-gray-500">
-              My Courses
-            </div>
-            {courses.map(course => {
-              const isActive = active === 'course' && activeCourseId === course.id
-              return (
-                <button
-                  key={course.id}
-                  onClick={() => onNavigate({ page: 'course', courseId: course.id })}
-                  className={`relative w-full flex items-center gap-3 pl-5 pr-4 py-2 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
-                  )}
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: course.color }} />
-                  <span className="flex-1 text-left truncate">{course.shortCode || course.name}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
       </nav>
 
       {/* Footer */}
