@@ -161,7 +161,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
         {page === 'dashboard' && <ErrorBoundary label="Dashboard"><Dashboard updates={updates} todos={todos} emails={emails} courses={courses} courseContent={courseContent} grades={grades} onNavigate={navigate} /></ErrorBoundary>}
         {page === 'updates' && <ErrorBoundary label="Brightspace Updates"><Updates updates={updates} courses={courses} /></ErrorBoundary>}
         {page === 'todos' && <ErrorBoundary label="Weekly To-Do"><Todos todos={todos} courses={courses} setTodos={setTodos} /></ErrorBoundary>}
-        {page === 'emails' && <ErrorBoundary label="Professor Emails"><Emails emails={emails} courses={courses} /></ErrorBoundary>}
+        {page === 'emails' && <ErrorBoundary label="Professor Emails"><Emails emails={emails} courses={courses} emailEnabled={emailEnabled} /></ErrorBoundary>}
         {page === 'schedule' && <ErrorBoundary label="Class Schedule"><Schedule schedule={schedule} courses={courses} updates={updates} /></ErrorBoundary>}
         {page === 'files' && <ErrorBoundary label="Course Files"><Files courses={courses} courseContent={courseContent} setCourses={setCourses} /></ErrorBoundary>}
         {page === 'automations' && <ErrorBoundary label="Automations"><Automations automations={automations} /></ErrorBoundary>}

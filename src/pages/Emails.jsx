@@ -1,14 +1,64 @@
 import React, { useState } from 'react'
-import { AlertCircle, Mail } from 'lucide-react'
+import { AlertCircle, Mail, Clock, Sparkles } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 
-export default function Emails({ emails, courses }) {
+const AUTH_BASE = import.meta.env.DEV
+  ? `http://${window.location.hostname}:3001`
+  : ''
+
+export default function Emails({ emails, courses, emailEnabled }) {
   const [expanded, setExpanded] = useState(null)
   const [filterCourse, setFilterCourse] = useState('all')
 
   if (!emails || !courses) return <SkelPage rows={6} />
+
+  // If the user hasn't granted Microsoft email access yet, show a clean
+  // "Coming Soon" style onboarding card instead of an empty list.
+  if (!emailEnabled) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Professor Emails</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Unified inbox for professor messages from .edu senders</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-8 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/30 mb-4">
+            <Mail size={26} className="text-white" />
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 text-[10px] font-semibold uppercase tracking-wide mb-3">
+            <Sparkles size={11} /> Coming Soon
+          </div>
+
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Pull your professor emails into EduSync</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-5">
+            Connect your Microsoft inbox to see all professor emails from .edu senders in one place, automatically matched to the right course.
+          </p>
+
+          <a
+            href={`${AUTH_BASE}/auth/microsoft?email=1`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md transition-colors"
+          >
+            <Mail size={16} /> Grant Email Access
+          </a>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+            One-click Microsoft approval for the <span className="font-mono font-medium">Mail.Read</span> permission. No extra login.
+          </p>
+        </div>
+
+        {/* Feature preview — shows what they'll get once connected */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-60">
+          <PreviewCard title="Filtered to .edu" description="Only messages from professors, not your whole inbox" />
+          <PreviewCard title="Auto-matched to courses" description="Subject + sender mapped to the right class" />
+          <PreviewCard title="Important emails flagged" description="Deadlines and grade notices pop to the top" />
+        </div>
+      </div>
+    )
+  }
 
 
   const filtered = filterCourse === 'all'
@@ -90,4 +140,17 @@ export default function Emails({ emails, courses }) {
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function PreviewCard({ title, description }) {
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Clock size={12} className="text-gray-400" />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Preview</span>
+      </div>
+      <p className="text-sm font-medium text-gray-900 dark:text-white">{title}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+    </div>
+  )
 }
