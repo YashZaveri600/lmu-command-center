@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Calculator, Target, TrendingDown, TrendingUp, Plus, X } from 'lucide-react'
+import { Calculator, Target, TrendingDown, TrendingUp, Plus, X, Info } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 
 function letterGrade(pct) {
@@ -146,6 +146,17 @@ export default function WhatIfCalculator({ grades, courses }) {
       const needed = calcNeededScore(allGradesWithWhatIfs, cData.weights || {}, neededCategory, min)
       return { letter, min, color, needed }
     })
+  }, [cData, neededCategory, allGradesWithWhatIfs])
+
+  // Which weighted categories have NO grades (real or hypothetical)?
+  // These are silently excluded from the "what do I need" math, which makes
+  // the answers optimistic/pessimistic depending on how the rest of the
+  // semester plays out. Surface them so users know.
+  const ungradedCategories = useMemo(() => {
+    if (!cData || !neededCategory) return []
+    const catsWithGrades = new Set(allGradesWithWhatIfs.map(g => g.category))
+    return Object.keys(cData.weights || {})
+      .filter(cat => cat !== neededCategory && getWeight(cData.weights[cat]) > 0 && !catsWithGrades.has(cat))
   }, [cData, neededCategory, allGradesWithWhatIfs])
 
   function addWhatIfGrade() {
@@ -376,12 +387,37 @@ export default function WhatIfCalculator({ grades, courses }) {
                     </div>
                   ))}
                 </div>
-                {/* Explainer: if any letter is "Needs >100%", clarify the math */}
-                {neededScores.some(s => s.needed > 100) && (
+                {/* Ungraded categories notice — critical for correctness */}
+                {ungradedCategories.length > 0 && (
+                  <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2.5 text-xs">
+                    <div className="flex items-start gap-2">
+                      <Info size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 text-blue-800 dark:text-blue-200">
+                        <p className="font-semibold mb-1">These answers exclude ungraded categories</p>
+                        <p className="text-blue-700 dark:text-blue-300 mb-1.5">
+                          The calculation ignores{' '}
+                          {ungradedCategories.map((c, i) => (
+                            <React.Fragment key={c}>
+                              {i > 0 && (i === ungradedCategories.length - 1 ? ' and ' : ', ')}
+                              <span className="font-semibold">{c} ({getWeight(cData.weights[c]).toFixed(0)}%)</span>
+                            </React.Fragment>
+                          ))}
+                          {' '}because {ungradedCategories.length === 1 ? "it has" : 'they have'} no grades yet — so the required scores assume {ungradedCategories.length === 1 ? "that category won't" : "those categories won't"} count.
+                        </p>
+                        <p className="text-blue-700 dark:text-blue-300">
+                          For a realistic prediction: use <span className="font-semibold">Stack Hypothetical Grades</span> above to guess {ungradedCategories.length === 1 ? `a ${ungradedCategories[0]} score` : 'scores for those'}, then this grid will update.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* If anything is >100%, also briefly explain the math */}
+                {neededScores.some(s => s.needed > 100) && ungradedCategories.length === 0 && (
                   <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                     <p className="font-semibold mb-0.5">Why some letters are impossible</p>
                     <p className="text-amber-600 dark:text-amber-400">
-                      Your other graded categories are already averaged in and can't change. Even a perfect score on this category can only shift your overall grade so much. The bigger the gap to a letter and the smaller this category's weight, the higher the score needed.
+                      Your other graded categories are already averaged in and can't change. Even a perfect score on this category can only shift your overall grade so much.
                     </p>
                   </div>
                 )}
