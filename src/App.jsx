@@ -144,7 +144,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
       </div>
 
       {/* Desktop header (top bar visible on every page) */}
-      <div className="hidden lg:flex fixed top-0 right-0 z-20 px-6 py-3 bg-gray-50 dark:bg-gray-950">
+      <div className="hidden lg:flex fixed top-3 right-4 z-20 px-3 py-1.5 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
         <SyncStatus />
       </div>
 
@@ -154,7 +154,7 @@ function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dar
       </div>
       {mobileMenuOpen && <div className="fixed inset-0 bg-black/30 z-10 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
 
-      <main className="flex-1 p-4 pt-16 lg:pt-6 lg:p-8 max-w-6xl overflow-y-auto">
+      <main className="flex-1 p-4 pt-16 lg:pt-14 lg:pb-8 lg:px-8 max-w-6xl overflow-y-auto">
         {page !== 'briefing' && <SearchBar courses={courses} onNavigate={navigate} />}
 
         {page === 'briefing' && <ErrorBoundary label="Daily Briefing"><DailyBriefing updates={updates} todos={todos} emails={emails} courses={courses} schedule={schedule} semester={semester} studySessions={studySessions} onNavigate={navigate} user={user} /></ErrorBoundary>}
