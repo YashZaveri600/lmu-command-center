@@ -161,17 +161,25 @@ export default function Dashboard({ updates, todos, emails, courses, courseConte
   )
 }
 
-function StatCard({ icon, label, value, onClick }) {
+function StatCard({ icon, label, value, color = 'blue', onClick }) {
+  const accentBg = {
+    red: 'group-hover:bg-red-50 dark:group-hover:bg-red-900/20',
+    blue: 'group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20',
+    yellow: 'group-hover:bg-yellow-50 dark:group-hover:bg-yellow-900/20',
+    purple: 'group-hover:bg-purple-50 dark:group-hover:bg-purple-900/20',
+  }[color] || ''
   return (
     <button
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-left hover:shadow-md transition-shadow"
+      className="group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-left hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 active:scale-[0.99]"
     >
       <div className="flex items-center gap-3">
-        {icon}
+        <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700/50 ${accentBg} transition-colors`}>
+          {icon}
+        </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">{value}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
         </div>
       </div>
     </button>

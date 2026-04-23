@@ -160,12 +160,15 @@ export default function Grades({ grades, courses, setGrades }) {
 
       {/* Overall GPA */}
       {overallGPA !== null && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <Award size={24} className="text-yellow-500" />
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Overall GPA</span>
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center shadow-sm">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Award size={20} className="text-yellow-500" />
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Overall GPA</span>
           </div>
-          <p className="text-5xl font-bold text-gray-900 dark:text-white">{overallGPA.toFixed(2)}</p>
+          <p className="text-6xl font-bold text-gray-900 dark:text-white leading-none">{overallGPA.toFixed(2)}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+            Weighted across {validPercentages.length} course{validPercentages.length === 1 ? '' : 's'}
+          </p>
         </div>
       )}
 
