@@ -355,9 +355,19 @@ export default function WhatIfCalculator({ grades, courses }) {
                       <p className="text-lg font-bold" style={{ color }}>{letter}</p>
                       <p className="text-sm font-mono text-gray-700 dark:text-gray-300 mt-0.5">
                         {needed > 100 ? (
-                          <span className="text-red-500 dark:text-red-400 text-[11px] font-semibold">Not possible</span>
+                          <span
+                            className="text-red-500 dark:text-red-400 text-[11px] font-semibold"
+                            title={`Would need ${needed.toFixed(0)}% on your next grade — impossible with a 100% cap. The other categories are locked in and can't pull your overall high enough.`}
+                          >
+                            Needs {needed.toFixed(0)}%
+                          </span>
                         ) : needed <= 0 ? (
-                          <span className="text-green-500 dark:text-green-400 text-[11px] font-semibold">Guaranteed</span>
+                          <span
+                            className="text-green-500 dark:text-green-400 text-[11px] font-semibold"
+                            title="You've already passed this letter threshold based on your other graded work."
+                          >
+                            Guaranteed
+                          </span>
                         ) : (
                           <span>{needed.toFixed(0)}%</span>
                         )}
@@ -366,6 +376,15 @@ export default function WhatIfCalculator({ grades, courses }) {
                     </div>
                   ))}
                 </div>
+                {/* Explainer: if any letter is "Needs >100%", clarify the math */}
+                {neededScores.some(s => s.needed > 100) && (
+                  <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                    <p className="font-semibold mb-0.5">Why some letters are impossible</p>
+                    <p className="text-amber-600 dark:text-amber-400">
+                      Your other graded categories are already averaged in and can't change. Even a perfect score on this category can only shift your overall grade so much. The bigger the gap to a letter and the smaller this category's weight, the higher the score needed.
+                    </p>
+                  </div>
+                )}
                 {whatIfGrades.length > 0 && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
                     Includes your {whatIfGrades.length} stacked hypothetical{whatIfGrades.length === 1 ? '' : 's'} above.
