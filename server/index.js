@@ -686,12 +686,16 @@ app.post('/api/ai/chat', async (req, res) => {
     const API_KEY = process.env.ANTHROPIC_API_KEY
     if (!API_KEY) return res.json({ ok: false, error: 'AI not configured. Add ANTHROPIC_API_KEY to enable.' })
 
-    // Gather all student data for context
-    const [courses, gradesData, todos, updates] = await Promise.all([
+    // Gather all student data for context — EVERYTHING the app has on this student
+    const [courses, gradesData, todos, updates, courseContent, calendarEvents, emails, notes] = await Promise.all([
       db.getCourses(uid),
       db.getGrades(uid),
       db.getTodos(uid),
       db.getUpdates(uid),
+      db.getCourseContent(uid),
+      db.getCalendarEvents(uid),
+      db.getEmails(uid),
+      db.getNotes(uid),
     ])
 
     // Compute real GPA and letter grades using weighted categories
@@ -739,9 +743,64 @@ app.post('/api/ai/chat', async (req, res) => {
 
     const courseName = (id) => (courses || []).find(c => c.id === id)?.name || id
 
+    // Strip HTML to keep context compact + safe
+    const stripHtml = (s) => (s || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+
+    // Per-course file summary: pick syllabus + top-level modules + a sample of files
+    const contentByCourse = {}
+    for (const item of (courseContent || [])) {
+      if (!contentByCourse[item.course]) contentByCourse[item.course] = []
+      contentByCourse[item.course].push(item)
+    }
+    function findSyllabusItem(items) {
+      if (!items) return null
+      const leaf = items.find(c => /syllabus/i.test(c.title) && ['file', 'page', 'link', 'pdf', 'pptx', 'docx'].includes(c.type))
+      return leaf || items.find(c => /syllabus/i.test(c.title)) || null
+    }
+    function summarizeCourseFiles(courseId) {
+      const items = contentByCourse[courseId] || []
+      if (items.length === 0) return '  (no course files synced)'
+      const lines = []
+      const syl = findSyllabusItem(items)
+      if (syl) lines.push(`  Syllabus: "${syl.title}"${syl.url ? ' [' + syl.url + ']' : ''}`)
+      // Top-level modules (parentBsId null)
+      const topModules = items.filter(i => i.type === 'module' && !i.parentBsId).slice(0, 10)
+      if (topModules.length > 0) {
+        lines.push(`  Modules: ${topModules.map(m => m.title).join(' | ')}`)
+      }
+      // Most relevant leaves (non-module), cap at 25 per course to keep context manageable
+      const leaves = items.filter(i => i.type !== 'module').slice(0, 25)
+      if (leaves.length > 0) {
+        lines.push(`  Files (${items.filter(i => i.type !== 'module').length} total, first 25 shown):`)
+        leaves.forEach(l => {
+          lines.push(`    - [${l.type}] ${l.title}`)
+        })
+      }
+      return lines.join('\n')
+    }
+
+    const pendingEmails = (emails || []).slice(0, 15)
+    const recentNotes = (notes || []).slice(0, 10)
+    const upcomingEvents = (calendarEvents || [])
+      .filter(e => e.startDate && new Date(e.startDate) >= new Date(today + 'T00:00:00'))
+      .slice(0, 20)
+
+    // Pull grades-with-feedback out so AI can reference professor comments
+    const gradesWithFeedback = []
+    for (const [cid, cdata] of Object.entries(gradesData?.courses || {})) {
+      for (const g of (cdata.grades || [])) {
+        if (g.feedback && typeof g.feedback === 'string' && g.feedback.trim()) {
+          gradesWithFeedback.push({ course: cid, name: g.name, score: g.score, maxScore: g.maxScore, feedback: stripHtml(g.feedback).slice(0, 400) })
+        }
+      }
+    }
+
+    // Tasks that have a rubric — AI can read grading criteria
+    const tasksWithRubrics = (todos || []).filter(t => !t.done && Array.isArray(t.rubric) && t.rubric.length > 0).slice(0, 10)
+
     const context = `Student's data as of ${today}:
 
-COURSES: ${(courses || []).map(c => `${c.shortCode} - ${c.name}`).join(', ')}
+COURSES: ${(courses || []).map(c => `${c.shortCode} - ${c.name} [id: ${c.id}]`).join(', ')}
 
 OVERALL GPA: ${overallGPA}
 
@@ -758,11 +817,39 @@ ${courseGradeInfo.map(c => {
 
 GPA SCALE: A=4.0, A-=3.7, B+=3.3, B=3.0, B-=2.7, C+=2.3, C=2.0. Overall GPA = average of course GPAs.
 
+INDIVIDUAL GRADES (with score breakdown):
+${courseGradeInfo.flatMap(c => {
+  if (!c.grades || c.grades.length === 0) return []
+  return c.grades.slice(0, 20).map(g => `- [${courseName(c.id)}] ${g.name} (${g.category}): ${g.score}/${g.maxScore} (${((g.score / g.maxScore) * 100).toFixed(0)}%)`)
+}).join('\n') || 'None'}
+
+PROFESSOR FEEDBACK ON GRADED WORK:
+${gradesWithFeedback.length > 0 ? gradesWithFeedback.map(f => `- [${courseName(f.course)}] ${f.name} (${f.score}/${f.maxScore}): "${f.feedback}"`).join('\n') : 'No written feedback from professors yet.'}
+
 PENDING TASKS (${pendingTasks.length}):
 ${pendingTasks.map(t => `- [${courseName(t.course)}] ${t.task}${t.due ? ` (due ${t.due})` : ''} [${t.priority}]${!t.done && t.due && new Date(t.due) < new Date() ? ' OVERDUE' : ''}`).join('\n') || 'None'}
 
-RECENT ANNOUNCEMENTS:
-${announcements.map(a => `- [${courseName(a.course)}] ${a.title}: ${(a.body || '').slice(0, 200)}`).join('\n') || 'None'}`
+TASKS WITH GRADING RUBRICS:
+${tasksWithRubrics.length > 0 ? tasksWithRubrics.map(t => {
+  const r = t.rubric[0]
+  const crit = (r.criteria || []).slice(0, 5).map(c => c.name).join(', ')
+  return `- [${courseName(t.course)}] ${t.task}: ${r.name}${crit ? ` — criteria: ${crit}` : ''}`
+}).join('\n') : 'None'}
+
+RECENT ANNOUNCEMENTS (${announcements.length}):
+${announcements.map(a => `- [${courseName(a.course)}] ${a.title} (${a.date}): ${stripHtml(a.body).slice(0, 300)}`).join('\n') || 'None'}
+
+UPCOMING CALENDAR EVENTS:
+${upcomingEvents.length > 0 ? upcomingEvents.map(e => `- [${courseName(e.course)}] ${e.title} — ${e.startDate}${e.location ? ' @ ' + e.location : ''}`).join('\n') : 'No scheduled events.'}
+
+PROFESSOR EMAILS (recent ${pendingEmails.length}):
+${pendingEmails.length > 0 ? pendingEmails.map(e => `- [${courseName(e.course) || 'Unmatched'}] From ${e.from}: ${e.subject}${e.preview ? ' — ' + stripHtml(e.preview).slice(0, 150) : ''}`).join('\n') : 'No synced emails.'}
+
+STUDENT'S OWN NOTES (most recent):
+${recentNotes.length > 0 ? recentNotes.map(n => `- [${courseName(n.course) || 'General'}] ${stripHtml(n.text).slice(0, 200)}`).join('\n') : 'No notes.'}
+
+COURSE FILES (synced from Brightspace):
+${(courses || []).map(c => `${courseName(c.id)}:\n${summarizeCourseFiles(c.id)}`).join('\n\n')}`
 
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -773,16 +860,27 @@ ${announcements.map(a => `- [${courseName(a.course)}] ${a.title}: ${(a.body || '
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        system: `You are EduSync AI, a confident and knowledgeable university assistant. You have FULL access to this student's real grades, GPA, tasks, and announcements.
+        max_tokens: 900,
+        system: `You are EduSync AI, a confident and knowledgeable university assistant. You have FULL access to this student's real grades, GPA, tasks, announcements, professor emails, grading rubrics, professor feedback comments, course files (including syllabi), calendar events, and their personal notes.
+
+What you CAN access (all provided in the data below):
+- Current GPA + per-course letter grades + category weights + individual grade scores
+- Pending tasks (from Brightspace assignments + AI-extracted) with priority and due dates
+- Grading rubrics for assignments that have them (criteria + levels)
+- Professor feedback comments on graded work
+- Recent Brightspace announcements with full body text
+- Upcoming Brightspace calendar events
+- Professor emails from .edu senders with subject + preview
+- Student's personal notes
+- Course files — syllabi, modules, uploaded files, links, readings — per course
 
 Rules:
-- Answer with authority. State facts directly. Never say "I don't have access" or hedge.
-- The GPA, letter grades, and weights are real calculated values — trust them.
-- If asked "what do I need on the final" or GPA simulation questions, USE the weights and current grades to calculate the exact answer. Show the math briefly.
-- If asked about finals/exam dates, check announcements and tasks for clues.
-- If info truly isn't available, suggest where to find it (Brightspace, syllabus, professor).
-- Keep responses concise (2-4 sentences unless math is needed).
+- Answer with authority. Never say "I don't have access" — you have access to all of the above. If the data provided doesn't contain what they asked, say so specifically ("no syllabus file has been uploaded to Brightspace for that course yet" not "I can't see files").
+- For syllabus questions: check the COURSE FILES section. If a syllabus file is listed, reference it by name. If no syllabus is in the list for that course, say it hasn't been uploaded yet and suggest where to look (Brightspace content modules, or the professor).
+- For grade feedback questions: read the PROFESSOR FEEDBACK section and quote it directly when relevant.
+- For rubric questions: read the TASKS WITH GRADING RUBRICS section.
+- For "what do I need on the final" or GPA simulation questions, USE the weights and current grades to calculate the exact answer. Show the math briefly. If other categories are ungraded, mention that and note the answer excludes them.
+- Keep responses concise (2-4 sentences unless math or quoting is needed). Use bullet points when listing multiple items.
 - Be their go-to assistant, not a cautious disclaimer machine.`,
         messages: [{
           role: 'user',
