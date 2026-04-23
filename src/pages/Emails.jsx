@@ -1,12 +1,8 @@
 import React, { useState } from 'react'
-import { AlertCircle, Mail, Clock, Sparkles } from 'lucide-react'
+import { AlertCircle, Mail, Clock, Sparkles, Lock } from 'lucide-react'
 import CourseBadge from '../components/CourseBadge'
 import { SkelPage } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
-
-const AUTH_BASE = import.meta.env.DEV
-  ? `http://${window.location.hostname}:3001`
-  : ''
 
 export default function Emails({ emails, courses, emailEnabled }) {
   const [expanded, setExpanded] = useState(null)
@@ -15,7 +11,7 @@ export default function Emails({ emails, courses, emailEnabled }) {
   if (!emails || !courses) return <SkelPage rows={6} />
 
   // If the user hasn't granted Microsoft email access yet, show a clean
-  // "Coming Soon" style onboarding card instead of an empty list.
+  // "Coming Soon" card — no functional button, pure informational.
   if (!emailEnabled) {
     return (
       <div className="space-y-6">
@@ -24,7 +20,7 @@ export default function Emails({ emails, courses, emailEnabled }) {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Unified inbox for professor messages from .edu senders</p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-8 text-center">
+        <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-10 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/30 mb-4">
             <Mail size={26} className="text-white" />
           </div>
@@ -33,25 +29,18 @@ export default function Emails({ emails, courses, emailEnabled }) {
             <Sparkles size={11} /> Coming Soon
           </div>
 
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Pull your professor emails into EduSync</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-5">
-            Connect your Microsoft inbox to see all professor emails from .edu senders in one place, automatically matched to the right course.
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1.5">Professor Emails is almost here</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-4">
+            Once live, EduSync will automatically pull professor emails from your Microsoft inbox, filter to .edu senders, and match each message to the right course — all in one clean feed.
           </p>
 
-          <a
-            href={`${AUTH_BASE}/auth/microsoft?email=1`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-md transition-colors"
-          >
-            <Mail size={16} /> Grant Email Access
-          </a>
-
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-            One-click Microsoft approval for the <span className="font-mono font-medium">Mail.Read</span> permission. No extra login.
-          </p>
+          <div className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/60 rounded-full px-3 py-1.5 border border-gray-200 dark:border-gray-700">
+            <Lock size={11} /> Awaiting LMU IT approval
+          </div>
         </div>
 
-        {/* Feature preview — shows what they'll get once connected */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-60">
+        {/* Feature preview — shows what's coming */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-70">
           <PreviewCard title="Filtered to .edu" description="Only messages from professors, not your whole inbox" />
           <PreviewCard title="Auto-matched to courses" description="Subject + sender mapped to the right class" />
           <PreviewCard title="Important emails flagged" description="Deadlines and grade notices pop to the top" />
