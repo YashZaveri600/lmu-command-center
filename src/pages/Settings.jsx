@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { RefreshCw, Link2, CheckCircle, AlertCircle, XCircle, ExternalLink, Clock, Shield, Mail, Lock, Eye } from 'lucide-react'
 import { useToast } from '../components/Toast'
+import BrightspaceConnectGuide from '../components/BrightspaceConnectGuide'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -197,19 +198,10 @@ export default function Settings({ user, emailEnabled }) {
             </button>
           </div>
         ) : connectionStatus !== 'checking' ? (
-          <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-              <p className="font-medium text-blue-700 dark:text-blue-300 mb-2">How to connect:</p>
-              <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-400">
-                <li>Open <a href="https://brightspace.lmu.edu" target="_blank" rel="noreferrer" className="underline hover:text-blue-800 dark:hover:text-blue-200">brightspace.lmu.edu</a> and log in</li>
-                <li>Open DevTools (F12 or Cmd+Opt+I)</li>
-                <li>Go to <strong>Application</strong> → <strong>Cookies</strong> → brightspace.lmu.edu</li>
-                <li>Find <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">d2lSessionVal</code> and copy the <strong>Value</strong></li>
-                <li>Paste it below</li>
-              </ol>
-            </div>
+          <div className="space-y-5">
+            <BrightspaceConnectGuide />
 
-            <div className="space-y-3">
+            <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                   d2lSessionVal
