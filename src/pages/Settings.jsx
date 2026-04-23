@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { RefreshCw, Link2, CheckCircle, AlertCircle, XCircle, ExternalLink, Clock, Shield, Mail } from 'lucide-react'
+import { useToast } from '../components/Toast'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -10,6 +11,7 @@ const AUTH_BASE = import.meta.env.DEV
   : ''
 
 export default function Settings({ user, emailEnabled }) {
+  const toast = useToast()
   const [bsCookie, setBsCookie] = useState('')
   const [bsSecureCookie, setBsSecureCookie] = useState('')
   const [connectionStatus, setConnectionStatus] = useState('unknown') // unknown, connected, disconnected, checking
@@ -75,11 +77,14 @@ export default function Settings({ user, emailEnabled }) {
           message: `Synced ${data.results.grades} grades from ${data.results.courses} courses. ${data.results.announcements} new announcements. ${data.results.tasks || 0} tasks found${data.results.completed ? ` (${data.results.completed} auto-completed)` : ''}.${data.emailResults?.synced ? ` ${data.emailResults.synced} emails synced.` : ''}${data.results.errors?.length > 0 ? ` (${data.results.errors.length} warnings)` : ''}`,
         })
         setLastSync(new Date())
+        toast.show('Sync complete', 'success')
       } else {
         setSyncResult({ type: 'error', message: data.error || 'Sync failed' })
+        toast.show(data.error || 'Sync failed', 'error', 5000)
       }
     } catch (e) {
       setSyncResult({ type: 'error', message: 'Sync request failed' })
+      toast.show('Sync request failed', 'error', 5000)
     }
     setSyncing(false)
   }

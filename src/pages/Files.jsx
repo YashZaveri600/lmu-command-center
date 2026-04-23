@@ -6,6 +6,7 @@ import {
   Presentation, Sheet, Music, Archive,
 } from 'lucide-react'
 import { SkelPage } from '../components/Skeleton'
+import { useToast } from '../components/Toast'
 
 // API base — mirrors the convention used elsewhere in the app.
 const API = import.meta.env.DEV
@@ -193,6 +194,7 @@ export default function Files({ courses, courseContent, setCourses }) {
   const [lastSync, setLastSync] = useState(null)
   const [syncing, setSyncing] = useState(false)
   const [syncChip, setSyncChip] = useState(null) // { type: 'success'|'error', message }
+  const toast = useToast()
   // Tick every 30s so the "X min ago" text stays fresh without needing interaction.
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -220,11 +222,18 @@ export default function Files({ courses, courseContent, setCourses }) {
       if (data.ok) {
         setLastSync(new Date())
         setSyncChip({ type: 'success', message: 'Synced' })
+        const n = data.results
+        toast.show(
+          n ? `Synced: ${n.grades || 0} grades, ${n.tasks || 0} tasks, ${n.announcements || 0} announcements` : 'Synced',
+          'success'
+        )
       } else {
         setSyncChip({ type: 'error', message: data.error || 'Sync failed' })
+        toast.show(data.error || 'Sync failed', 'error', 5000)
       }
     } catch (e) {
       setSyncChip({ type: 'error', message: 'Sync failed' })
+      toast.show('Sync failed', 'error', 5000)
     }
     setSyncing(false)
     // Hide the chip after 3s

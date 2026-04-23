@@ -18,6 +18,7 @@ import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/Settings'
 import AiChat from './components/AiChat'
 import ErrorBoundary from './components/ErrorBoundary'
+import { ToastProvider } from './components/Toast'
 import { useAPI, useSSE } from './hooks/useData'
 import { useDarkMode } from './hooks/useDarkMode'
 
@@ -66,7 +67,11 @@ export default function App() {
   }
 
   // Authenticated — render the app
-  return <AuthenticatedApp user={user} emailEnabled={emailEnabled} setAuthState={setAuthState} page={page} setPage={setPage} dark={dark} toggleDark={toggleDark} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+  return (
+    <ToastProvider>
+      <AuthenticatedApp user={user} emailEnabled={emailEnabled} setAuthState={setAuthState} page={page} setPage={setPage} dark={dark} toggleDark={toggleDark} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+    </ToastProvider>
+  )
 }
 
 function AuthenticatedApp({ user, emailEnabled, setAuthState, page, setPage, dark, toggleDark, mobileMenuOpen, setMobileMenuOpen }) {
