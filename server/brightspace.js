@@ -389,6 +389,84 @@ export async function fetchCalendarEvents(courseId, cookie) {
   }
 }
 
+// ─── Download raw file/page content as text for one topic ───
+// Follows the topic's file URL or viewer URL, extracts text.
+// For HTML pages: strip tags, return text.
+// For PDFs: uses pdf-parse if available; otherwise returns empty.
+// Returns null on any failure (rate limit, 404, binary we can't read).
+export async function fetchTopicText(courseId, topicId, cookie) {
+  try {
+    // Build cookie header same way as bsFetch
+    let cookieHeader = ''
+    if (cookie) {
+      if (cookie.includes('d2lSessionVal=') || cookie.includes('d2lSecureSessionVal=')) {
+        cookieHeader = cookie
+      } else {
+        try {
+          const parsed = JSON.parse(cookie)
+          cookieHeader = `d2lSessionVal=${parsed.session}`
+          if (parsed.secure) cookieHeader += `; d2lSecureSessionVal=${parsed.secure}`
+        } catch {
+          cookieHeader = `d2lSessionVal=${cookie}`
+        }
+      }
+    }
+
+    // First, get the topic metadata to find the actual file URL
+    const topicMeta = await bsFetch(`/d2l/api/le/1.0/${courseId}/content/topics/${topicId}`, cookie)
+    const url = topicMeta?.Url || `/d2l/le/content/${courseId}/topics/${topicId}/File/Download`
+
+    const fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`
+    const res = await fetch(fullUrl, { headers: { Cookie: cookieHeader }, redirect: 'follow' })
+    if (!res.ok) return null
+
+    const contentType = res.headers.get('content-type') || ''
+
+    if (contentType.includes('text/html') || contentType.includes('application/xml') || contentType.includes('text/xml')) {
+      const html = await res.text()
+      return htmlToText(html).slice(0, 50000)
+    }
+    if (contentType.includes('text/plain')) {
+      return (await res.text()).slice(0, 50000)
+    }
+    if (contentType.includes('application/pdf')) {
+      // Try pdf-parse if installed; otherwise we skip PDFs gracefully
+      try {
+        const buf = Buffer.from(await res.arrayBuffer())
+        const mod = await import('pdf-parse').catch(() => null)
+        if (!mod) return null
+        const pdfParse = mod.default || mod
+        const parsed = await pdfParse(buf)
+        return (parsed.text || '').slice(0, 50000)
+      } catch (e) {
+        console.log(`[brightspace] PDF parse failed for topic ${topicId}: ${e.message}`)
+        return null
+      }
+    }
+    // docx, pptx — not supported yet, skip
+    return null
+  } catch (e) {
+    console.log(`[brightspace] fetchTopicText failed for ${topicId}: ${e.message}`)
+    return null
+  }
+}
+
+// Strip HTML tags, entities, and collapse whitespace.
+function htmlToText(html) {
+  if (!html) return ''
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 // ─── Get course content modules (files, links, pages, videos) ───
 // Walks the content tree and returns a flat list with parent references.
 // Fetches sibling modules in parallel with a concurrency cap, bounded depth,
@@ -567,5 +645,6 @@ export default {
   fetchAnnouncements,
   fetchCourseContent,
   fetchCalendarEvents,
+  fetchTopicText,
   fetchWhoAmI,
 }

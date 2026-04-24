@@ -21,6 +21,8 @@ pool.query('SELECT NOW()').then(async () => {
     await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS rubric JSONB`)
     // Feature 5: professor feedback on graded items
     await pool.query(`ALTER TABLE grades ADD COLUMN IF NOT EXISTS feedback_text TEXT`)
+    // Weight source tracking (brightspace | syllabus | manual) so UI can show where weights came from
+    await pool.query(`ALTER TABLE grade_weights ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'brightspace'`)
     // Create unique index for upsert dedup (only on non-null source_id)
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS todos_user_source_id_idx ON todos(user_id, source_id) WHERE source_id IS NOT NULL`)
     // Course content table (Feature 1)
@@ -98,13 +100,16 @@ async function getGrades(userId) {
 
   // Get all weights
   const { rows: weights } = await q(
-    'SELECT course_app_id, category, weight, points FROM grade_weights WHERE user_id = $1',
+    'SELECT course_app_id, category, weight, points, source FROM grade_weights WHERE user_id = $1',
     [userId]
   )
   for (const w of weights) {
-    if (!courses[w.course_app_id]) courses[w.course_app_id] = { weights: {}, grades: [] }
+    if (!courses[w.course_app_id]) courses[w.course_app_id] = { weights: {}, grades: [], weightsSource: w.source || 'brightspace' }
     courses[w.course_app_id].weights[w.category] = { weight: parseFloat(w.weight) }
     if (w.points) courses[w.course_app_id].weights[w.category].points = parseFloat(w.points)
+    // If ANY weight is from syllabus, mark the whole course as syllabus-derived
+    // (in practice all per-course weights share a source)
+    if (w.source === 'syllabus') courses[w.course_app_id].weightsSource = 'syllabus'
   }
 
   // Get all grades
@@ -146,19 +151,57 @@ async function deleteGrade(userId, courseId, gradeId) {
   )
 }
 
+// Upsert weights without touching grades. Used when we extract weights from
+// a syllabus AFTER the main sync has already written grade rows. Won't
+// overwrite weights that came from Brightspace's categories API.
+async function upsertWeightsFromSyllabus(userId, courseAppId, weights) {
+  if (!weights || typeof weights !== 'object') return 0
+  const entries = Object.entries(weights)
+  if (entries.length === 0) return 0
+
+  // Check if this course already has ANY weights (from Brightspace). If so, skip.
+  const { rows } = await q(
+    `SELECT category, source FROM grade_weights WHERE user_id = $1 AND course_app_id = $2`,
+    [userId, courseAppId]
+  )
+  const hasBrightspaceWeights = rows.some(r => (r.source || 'brightspace') === 'brightspace')
+  if (hasBrightspaceWeights) return 0 // don't overwrite canonical Brightspace data
+
+  // Clear any previous syllabus-derived weights for this course
+  await q(
+    `DELETE FROM grade_weights WHERE user_id = $1 AND course_app_id = $2 AND source = 'syllabus'`,
+    [userId, courseAppId]
+  )
+
+  // Insert the new syllabus-derived weights
+  let inserted = 0
+  for (const [category, pct] of entries) {
+    await q(
+      `INSERT INTO grade_weights (user_id, course_app_id, category, weight, points, source)
+       VALUES ($1, $2, $3, $4, NULL, 'syllabus')
+       ON CONFLICT (user_id, course_app_id, category)
+       DO UPDATE SET weight = EXCLUDED.weight, source = 'syllabus'`,
+      [userId, courseAppId, category, Number(pct) / 100]
+    )
+    inserted++
+  }
+  return inserted
+}
+
 async function upsertGrades(userId, courseAppId, gradesData) {
   // gradesData = { weights: { category: { weight, points } }, grades: [ { id, category, name, score, maxScore, date } ] }
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
 
-    // Upsert weights
+    // Upsert weights (marked as coming from Brightspace so syllabus extraction
+    // knows not to overwrite canonical prof-configured weights)
     if (gradesData.weights) {
       for (const [category, w] of Object.entries(gradesData.weights)) {
         await client.query(
-          `INSERT INTO grade_weights (user_id, course_app_id, category, weight, points)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (user_id, course_app_id, category) DO UPDATE SET weight = EXCLUDED.weight, points = EXCLUDED.points`,
+          `INSERT INTO grade_weights (user_id, course_app_id, category, weight, points, source)
+           VALUES ($1, $2, $3, $4, $5, 'brightspace')
+           ON CONFLICT (user_id, course_app_id, category) DO UPDATE SET weight = EXCLUDED.weight, points = EXCLUDED.points, source = 'brightspace'`,
           [userId, courseAppId, category, w.weight, w.points || null]
         )
       }
@@ -678,7 +721,7 @@ async function deleteCoursesNotIn(userId, currentAppIds) {
 export default {
   pool,
   getCourses, upsertCourse,
-  getGrades, addGrade, deleteGrade, upsertGrades,
+  getGrades, addGrade, deleteGrade, upsertGrades, upsertWeightsFromSyllabus,
   getTodos, addTodo, updateTodo, deleteTodo, upsertSyncedTodo, markSyncedTodoDone,
   getUpdates, upsertUpdates,
   getCourseContent, upsertCourseContent,

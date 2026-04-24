@@ -353,12 +353,22 @@ export default function Grades({ grades, courses, setGrades }) {
           const courseGradeList = allGrades[courseId] || []
           const color = COURSE_COLORS[courseId] || courseInfo.color
 
+          const weightsSource = courseData.weightsSource
+
           return (
             <div key={courseId} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <CourseBadge courseId={courseId} courses={courses} />
                   <h3 className="font-semibold text-gray-900 dark:text-white">{courseInfo.name}</h3>
+                  {weightsSource === 'syllabus' && (
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                      title="Grade weights were extracted from this course's syllabus by AI since Brightspace didn't have them configured."
+                    >
+                      AI-detected weights
+                    </span>
+                  )}
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-bold text-gray-900 dark:text-white">{letter}</span>

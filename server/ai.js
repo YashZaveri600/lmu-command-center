@@ -242,4 +242,108 @@ Calculate what average score the student needs on remaining assignments to achie
   }
 }
 
-export default { extractTasks, generateDailyBriefing, whatDoINeed }
+/**
+ * Extract grade-category weights from a syllabus text.
+ * Returns: { weights: { [categoryName]: percentNumber }, confidence: 'high' | 'medium' | 'low' } | null
+ * Returns null if the syllabus doesn't clearly specify weights.
+ */
+export async function extractWeightsFromSyllabus(syllabusText, courseName) {
+  if (!ANTHROPIC_API_KEY || !syllabusText || syllabusText.length < 100) return null
+
+  // Trim text to ~12k chars to keep the prompt cheap and focused on the grading section
+  const text = syllabusText.length > 12000 ? syllabusText.slice(0, 12000) : syllabusText
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: `Extract the grade-category weights from this university syllabus for "${courseName}".
+
+Return ONLY valid JSON in this exact shape, no commentary:
+{
+  "weights": { "Category Name 1": 30, "Category Name 2": 25, ... },
+  "confidence": "high" | "medium" | "low"
+}
+
+Rules:
+- Weights are percentage numbers (0-100), must sum to 100 (or very close)
+- Use natural category names from the syllabus — "Exams", "Papers", "Quizzes", "Participation", etc. Don't invent categories.
+- If a category is a bundle like "Three Exams (15% each)", output "Exams": 45 (combine into one category)
+- If weights aren't clearly specified as percentages, return null
+- If you're unsure, use confidence: "low" but still return your best guess
+- If the syllabus specifies points instead of percentages, convert to percentages
+
+Return null if you can't find clear weight information.
+
+SYLLABUS TEXT:
+---
+${text}
+---
+
+Return ONLY the JSON object or the word null.`,
+        }],
+      }),
+    })
+
+    if (!res.ok) {
+      console.log(`[ai] syllabus weights extraction failed: HTTP ${res.status}`)
+      return null
+    }
+    const data = await res.json()
+    const content = data.content?.[0]?.text || ''
+
+    if (content.trim().toLowerCase() === 'null') return null
+
+    // Extract the first JSON object from the response
+    const m = content.match(/\{[\s\S]*\}/)
+    if (!m) return null
+
+    let parsed
+    try {
+      parsed = JSON.parse(m[0])
+    } catch {
+      return null
+    }
+
+    if (!parsed?.weights || typeof parsed.weights !== 'object') return null
+
+    // Sanity check — all values should be numbers 0-100 and sum close to 100
+    const entries = Object.entries(parsed.weights)
+    if (entries.length === 0) return null
+    const clean = {}
+    let sum = 0
+    for (const [cat, w] of entries) {
+      const n = Number(w)
+      if (!Number.isFinite(n) || n < 0 || n > 100) continue
+      const catName = String(cat).trim().slice(0, 100)
+      if (!catName) continue
+      clean[catName] = n
+      sum += n
+    }
+    if (Object.keys(clean).length === 0) return null
+    // Allow 85-115 range to account for slight rounding or extra-credit categories
+    if (sum < 85 || sum > 115) {
+      console.log(`[ai] syllabus weights for ${courseName} don't sum near 100 (got ${sum}), rejecting`)
+      return null
+    }
+
+    return {
+      weights: clean,
+      confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
+    }
+  } catch (e) {
+    console.log(`[ai] syllabus weights extraction error:`, e.message)
+    return null
+  }
+}
+
+export default { extractTasks, generateDailyBriefing, whatDoINeed, extractWeightsFromSyllabus }

@@ -7,7 +7,33 @@
 
 import brightspace from './brightspace.js'
 import db from './db/index.js'
-import { extractTasks } from './ai.js'
+import { extractTasks, extractWeightsFromSyllabus } from './ai.js'
+
+// Broadened syllabus detection — any title that sounds like a syllabus/course-info doc
+function findSyllabusItem(items) {
+  if (!items || items.length === 0) return null
+  const leafTypes = ['file', 'page', 'link', 'pdf', 'pptx', 'docx']
+  const patterns = [
+    /\bsyllabus\b/i,
+    /course\s*info(rmation)?/i,
+    /course\s*overview/i,
+    /welcome/i,
+    /course\s*outline/i,
+    /course\s*schedule/i,
+    /getting\s*started/i,
+  ]
+  // Prefer a leaf file match first
+  for (const rx of patterns) {
+    const leaf = items.find(c => rx.test(c.title || '') && leafTypes.includes(c.type))
+    if (leaf) return leaf
+  }
+  // Fall back to any matching item (could be a module)
+  for (const rx of patterns) {
+    const any = items.find(c => rx.test(c.title || ''))
+    if (any) return any
+  }
+  return null
+}
 
 // ─── Course mapping ───
 // Maps Brightspace course IDs to our short app IDs
@@ -297,6 +323,58 @@ export async function syncUserData(userId, cookie) {
       } catch (e) {
         console.error(`[sync] Skip calendar for ${appId}: ${e.message}`)
         // Best-effort, not a hard failure
+      }
+
+      // 4d. Auto-extract grade weights from syllabus (if Brightspace weights are missing)
+      // Best-effort: 20s budget total per course (download + AI call).
+      try {
+        // Only try if no Brightspace weights came through for this course
+        const existingWeights = await db.pool.query(
+          `SELECT COUNT(*) AS n FROM grade_weights WHERE user_id = $1 AND course_app_id = $2 AND source = 'brightspace'`,
+          [userId, appId]
+        )
+        const hasBrightspaceWeights = Number(existingWeights.rows[0]?.n || 0) > 0
+
+        if (!hasBrightspaceWeights) {
+          // Look up the synced content and find a syllabus-like file
+          const allContent = await db.getCourseContent(userId)
+          const courseItems = allContent.filter(c => c.course === appId)
+          const syllabus = findSyllabusItem(courseItems)
+
+          if (syllabus) {
+            // Extract bsId number from "topic-12345"
+            const topicId = String(syllabus.bsId || '').replace(/^topic-/, '')
+            if (topicId && /^\d+$/.test(topicId)) {
+              console.log(`[sync] ${appId}: attempting syllabus weight extraction from "${syllabus.title}"`)
+              const syllabusTextPromise = brightspace.fetchTopicText(enrollment.brightspaceId, topicId, cookie)
+              const textTimeout = new Promise(resolve => setTimeout(() => resolve(null), 10_000))
+              const syllabusText = await Promise.race([syllabusTextPromise, textTimeout])
+
+              if (syllabusText && syllabusText.length > 200) {
+                const aiTimeout = new Promise(resolve => setTimeout(() => resolve(null), 10_000))
+                const weightsResult = await Promise.race([
+                  extractWeightsFromSyllabus(syllabusText, enrollment.name),
+                  aiTimeout,
+                ])
+                if (weightsResult?.weights) {
+                  const inserted = await db.upsertWeightsFromSyllabus(userId, appId, weightsResult.weights)
+                  if (inserted > 0) {
+                    console.log(`[sync] ${appId}: extracted ${inserted} weights from syllabus (confidence: ${weightsResult.confidence})`)
+                  }
+                } else {
+                  console.log(`[sync] ${appId}: AI couldn't extract clear weights from syllabus`)
+                }
+              } else {
+                console.log(`[sync] ${appId}: syllabus text too short or unreadable (${syllabusText?.length || 0} chars)`)
+              }
+            }
+          } else {
+            console.log(`[sync] ${appId}: no syllabus-like file found to extract weights from`)
+          }
+        }
+      } catch (e) {
+        console.error(`[sync] Syllabus weight extraction skipped for ${appId}: ${e.message}`)
+        // Best-effort, never a hard failure
       }
 
       // 5. Fetch assignments (dropbox folders) — these are real tasks with due dates
