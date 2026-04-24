@@ -432,11 +432,15 @@ export async function fetchTopicText(courseId, topicId, cookie) {
     if (contentType.includes('application/pdf')) {
       try {
         const buf = Buffer.from(await res.arrayBuffer())
+        // pdf-parse v2 exports a PDFParse class; older default-fn API is gone.
         const mod = await import('pdf-parse').catch(() => null)
-        if (!mod) return null
-        const pdfParse = mod.default || mod
-        const parsed = await pdfParse(buf)
-        return (parsed.text || '').slice(0, 50000)
+        if (!mod || !mod.PDFParse) {
+          console.log(`[brightspace] pdf-parse module shape unexpected for topic ${topicId}`)
+          return null
+        }
+        const parser = new mod.PDFParse({ data: buf })
+        const result = await parser.getText()
+        return (result?.text || '').slice(0, 50000)
       } catch (e) {
         console.log(`[brightspace] PDF parse failed for topic ${topicId}: ${e.message}`)
         return null
