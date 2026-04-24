@@ -5,7 +5,7 @@
  * or OAuth2 tokens (when available).
  */
 
-const BASE_URL = process.env.BRIGHTSPACE_BASE_URL || 'https://brightspace.lmu.edu'
+export const BASE_URL = process.env.BRIGHTSPACE_BASE_URL || 'https://brightspace.lmu.edu'
 
 // ─── API call helper ───
 // cookie can be:
@@ -648,6 +648,7 @@ export async function fetchWhoAmI(cookie) {
 }
 
 export default {
+  BASE_URL,
   fetchEnrollments,
   fetchGrades,
   fetchCategories,

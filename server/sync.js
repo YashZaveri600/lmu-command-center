@@ -9,6 +9,23 @@ import brightspace from './brightspace.js'
 import db from './db/index.js'
 import { extractTasks, extractWeightsFromSyllabus } from './ai.js'
 
+// Build the Cookie header the same way bsFetch does — accepts cookie as raw
+// header, JSON object, or just the session value.
+function buildCookieHeaders(cookie) {
+  if (!cookie) return {}
+  if (cookie.includes('d2lSessionVal=') || cookie.includes('d2lSecureSessionVal=')) {
+    return { Cookie: cookie }
+  }
+  try {
+    const parsed = JSON.parse(cookie)
+    let str = `d2lSessionVal=${parsed.session}`
+    if (parsed.secure) str += `; d2lSecureSessionVal=${parsed.secure}`
+    return { Cookie: str }
+  } catch {
+    return { Cookie: `d2lSessionVal=${cookie}` }
+  }
+}
+
 // Broadened syllabus detection — any title that sounds like a syllabus/course-info doc.
 // Does NOT use \b word boundaries because filenames like "BIOL_3020_S2_Syllabus"
 // have underscores (word chars) instead of spaces, so \b misses them.
@@ -184,6 +201,27 @@ export async function syncUserData(userId, cookie) {
         folders: [],
       })
       results.courses++
+
+      // Quick probe: does the student have any API access to this course at all?
+      // Some professors restrict external API access for their courses in Brightspace's
+      // course admin settings. In that case every endpoint for the course returns 403.
+      // We detect this once and mark the course as api_restricted so the UI can show
+      // a clear "Restricted by instructor" message instead of silently missing data.
+      let courseApiRestricted = false
+      try {
+        const probe = await fetch(`${brightspace.BASE_URL || 'https://brightspace.lmu.edu'}/d2l/api/le/1.0/${enrollment.brightspaceId}/grades/values/myGradeValues/`, {
+          headers: buildCookieHeaders(cookie),
+          redirect: 'manual',
+        })
+        if (probe.status === 403) {
+          courseApiRestricted = true
+          console.log(`[sync] ${appId}: course restricted by instructor (API returns 403) — skipping data sync`)
+        }
+      } catch {
+        // Probe failure is non-fatal; fall through to normal sync attempts
+      }
+      await db.markCourseApiRestricted(userId, appId, courseApiRestricted)
+      if (courseApiRestricted) continue // skip rest of per-course sync — nothing will work
 
       // Track graded item names for this course (used later to detect completed assignments)
       const gradedNames = new Set()

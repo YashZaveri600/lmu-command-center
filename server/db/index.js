@@ -23,6 +23,8 @@ pool.query('SELECT NOW()').then(async () => {
     await pool.query(`ALTER TABLE grades ADD COLUMN IF NOT EXISTS feedback_text TEXT`)
     // Weight source tracking (brightspace | syllabus | manual) so UI can show where weights came from
     await pool.query(`ALTER TABLE grade_weights ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'brightspace'`)
+    // Track courses with restricted API access (prof disabled external API access)
+    await pool.query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS api_restricted BOOLEAN DEFAULT FALSE`)
     // Create unique index for upsert dedup (only on non-null source_id)
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS todos_user_source_id_idx ON todos(user_id, source_id) WHERE source_id IS NOT NULL`)
     // Course content table (Feature 1)
@@ -75,10 +77,17 @@ const q = (text, params) => pool.query(text, params)
 // Returns: [ { id, name, shortCode, color, professor, schedule, folders } ]
 async function getCourses(userId) {
   const { rows } = await q(
-    'SELECT app_id AS id, name, short_code AS "shortCode", color, professor, schedule, folders FROM courses WHERE user_id = $1 ORDER BY name',
+    'SELECT app_id AS id, name, short_code AS "shortCode", color, professor, schedule, folders, api_restricted AS "apiRestricted" FROM courses WHERE user_id = $1 ORDER BY name',
     [userId]
   )
   return rows
+}
+
+async function markCourseApiRestricted(userId, appId, restricted) {
+  await q(
+    'UPDATE courses SET api_restricted = $1 WHERE user_id = $2 AND app_id = $3',
+    [restricted, userId, appId]
+  )
 }
 
 async function upsertCourse(userId, course) {
@@ -720,7 +729,7 @@ async function deleteCoursesNotIn(userId, currentAppIds) {
 // ─── Export ───
 export default {
   pool,
-  getCourses, upsertCourse,
+  getCourses, upsertCourse, markCourseApiRestricted,
   getGrades, addGrade, deleteGrade, upsertGrades, upsertWeightsFromSyllabus,
   getTodos, addTodo, updateTodo, deleteTodo, upsertSyncedTodo, markSyncedTodoDone,
   getUpdates, upsertUpdates,

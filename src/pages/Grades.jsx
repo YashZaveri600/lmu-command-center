@@ -342,6 +342,32 @@ export default function Grades({ grades, courses, setGrades }) {
         </form>
       )}
 
+      {/* Restricted courses — professors disabled external API access for these */}
+      {courses.some(c => c.apiRestricted) && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Restricted by instructor</p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                The following {courses.filter(c => c.apiRestricted).length === 1 ? 'course has' : 'courses have'} disabled external API access, so EduSync can't pull {courses.filter(c => c.apiRestricted).length === 1 ? 'its' : 'their'} grades or content. This is a Brightspace setting your professor controls.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {courses.filter(c => c.apiRestricted).map(c => (
+                  <span key={c.id} className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 text-gray-700 dark:text-gray-200">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                    {c.shortCode || c.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Per-Course Grade Cards */}
       <div className="space-y-4">
         {Object.entries(courseWeights).map(([courseId, courseData]) => {
