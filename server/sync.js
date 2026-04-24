@@ -400,9 +400,17 @@ export async function syncUserData(userId, cookie) {
               const syllabusText = await Promise.race([syllabusTextPromise, textTimeout])
 
               if (syllabusText && syllabusText.length > 200) {
-                const aiTimeout = new Promise(resolve => setTimeout(() => resolve(null), 10_000))
+                // Pull existing grade category names for this course so Claude
+                // can align weight names with actual Brightspace grade data.
+                const { rows: gradeCats } = await db.pool.query(
+                  `SELECT DISTINCT category FROM grades WHERE user_id = $1 AND course_app_id = $2 AND category IS NOT NULL`,
+                  [userId, appId]
+                )
+                const gradeCategoryHints = gradeCats.map(r => r.category).filter(Boolean)
+
+                const aiTimeout = new Promise(resolve => setTimeout(() => resolve(null), 15_000))
                 const weightsResult = await Promise.race([
-                  extractWeightsFromSyllabus(syllabusText, enrollment.name),
+                  extractWeightsFromSyllabus(syllabusText, enrollment.name, gradeCategoryHints),
                   aiTimeout,
                 ])
                 if (weightsResult?.weights) {

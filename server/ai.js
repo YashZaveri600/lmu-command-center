@@ -246,12 +246,24 @@ Calculate what average score the student needs on remaining assignments to achie
  * Extract grade-category weights from a syllabus text.
  * Returns: { weights: { [categoryName]: percentNumber }, confidence: 'high' | 'medium' | 'low' } | null
  * Returns null if the syllabus doesn't clearly specify weights.
+ *
+ * gradeCategoryHints (optional): list of existing grade category names from
+ * Brightspace for this course. If provided, Claude aligns weight names to
+ * these hints when they refer to the same thing — avoids downstream fuzzy
+ * matching when the syllabus calls something "Exam 1" but Brightspace has
+ * grades under "Midterm".
  */
-export async function extractWeightsFromSyllabus(syllabusText, courseName) {
+export async function extractWeightsFromSyllabus(syllabusText, courseName, gradeCategoryHints = []) {
   if (!ANTHROPIC_API_KEY || !syllabusText || syllabusText.length < 100) return null
 
-  // Trim text to ~12k chars to keep the prompt cheap and focused on the grading section
-  const text = syllabusText.length > 12000 ? syllabusText.slice(0, 12000) : syllabusText
+  // Bumped to 40k chars — 12k was too small, it cut off the grading section
+  // in longer syllabi (real example: Managing People syllabus had grading at
+  // char 13,418 out of 79k).
+  const text = syllabusText.length > 40000 ? syllabusText.slice(0, 40000) : syllabusText
+
+  const hintLine = gradeCategoryHints && gradeCategoryHints.length > 0
+    ? `\n\nEXISTING GRADE CATEGORIES IN BRIGHTSPACE (from the student's posted grades): [${gradeCategoryHints.map(h => `"${h}"`).join(', ')}]\nWhen a weight category in the syllabus refers to the same thing as one of these existing grade categories, USE THE EXACT EXISTING NAME so weights and grades line up. Only invent a new name if the syllabus weight category has no corresponding existing grade category yet (e.g. final exam not graded yet).`
+    : ''
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -263,7 +275,7 @@ export async function extractWeightsFromSyllabus(syllabusText, courseName) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 700,
         messages: [{
           role: 'user',
           content: `Extract the grade-category weights from this university syllabus for "${courseName}".
@@ -276,11 +288,10 @@ Return ONLY valid JSON in this exact shape, no commentary:
 
 Rules:
 - Weights are percentage numbers (0-100), must sum to 100 (or very close)
-- Use natural category names from the syllabus — "Exams", "Papers", "Quizzes", "Participation", etc. Don't invent categories.
 - If a category is a bundle like "Three Exams (15% each)", output "Exams": 45 (combine into one category)
 - If weights aren't clearly specified as percentages, return null
-- If you're unsure, use confidence: "low" but still return your best guess
 - If the syllabus specifies points instead of percentages, convert to percentages
+- If you're unsure, use confidence: "low" but still return your best guess${hintLine}
 
 Return null if you can't find clear weight information.
 
