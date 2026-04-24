@@ -7,6 +7,7 @@ import WhatIfCalculator from '../components/WhatIfCalculator'
 import { SkelPage } from '../components/Skeleton'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
+import { getWeight, calcCoursePercentage } from '../utils/gradeMath'
 
 const API = import.meta.env.DEV
   ? `http://${window.location.hostname}:3001/api`
@@ -39,36 +40,6 @@ function letterGrade(pct) {
 function gpaPoints(letter) {
   const map = { 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D+': 1.3, 'D': 1.0, 'D-': 0.7, 'F': 0.0 }
   return map[letter] ?? 0.0
-}
-
-function getWeight(w) {
-  if (typeof w === 'number') return w
-  if (w && typeof w === 'object' && w.weight != null) return w.weight * 100
-  return 0
-}
-
-function calcCoursePercentage(courseGrades, weights) {
-  if (!courseGrades || courseGrades.length === 0 || !weights) return null
-  const categoryScores = {}
-  const categoryCounts = {}
-  courseGrades.forEach(g => {
-    const cat = g.category
-    if (!categoryScores[cat]) { categoryScores[cat] = 0; categoryCounts[cat] = 0 }
-    categoryScores[cat] += (g.score / g.maxScore) * 100
-    categoryCounts[cat] += 1
-  })
-  let totalWeighted = 0
-  let totalWeight = 0
-  Object.entries(categoryScores).forEach(([cat, total]) => {
-    const avg = total / categoryCounts[cat]
-    const weight = getWeight(weights[cat])
-    if (weight > 0) {
-      totalWeighted += avg * (weight / 100)
-      totalWeight += weight
-    }
-  })
-  if (totalWeight === 0) return null
-  return (totalWeighted / totalWeight) * 100
 }
 
 export default function Grades({ grades, courses, setGrades }) {

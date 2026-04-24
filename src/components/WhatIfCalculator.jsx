@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { Calculator, Target, TrendingDown, TrendingUp, Plus, X, Info } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
+import { getWeight, matchGradeToWeightCategory, calcCoursePercentage } from '../utils/gradeMath'
 
 function letterGrade(pct) {
   if (pct >= 93) return 'A'
@@ -17,49 +18,23 @@ function letterGrade(pct) {
   return 'F'
 }
 
-function getWeight(w) {
-  if (typeof w === 'number') return w
-  if (w && typeof w === 'object' && w.weight != null) return w.weight * 100
-  return 0
-}
-
-// Overall percentage = weighted average of graded category averages.
-// Categories with weight but no grades are ignored in the denominator
-// (matches how Brightspace shows in-progress grades).
-function calcPercentage(gradesList, weights) {
-  if (!gradesList || gradesList.length === 0 || !weights) return null
-  const catSum = {}
-  const catCount = {}
-  gradesList.forEach(g => {
-    const cat = g.category
-    if (!catSum[cat]) { catSum[cat] = 0; catCount[cat] = 0 }
-    catSum[cat] += (g.score / g.maxScore) * 100
-    catCount[cat] += 1
-  })
-  let totalWeighted = 0
-  let totalWeight = 0
-  Object.entries(catSum).forEach(([cat, sum]) => {
-    const avg = sum / catCount[cat]
-    const weight = getWeight(weights[cat])
-    if (weight > 0) {
-      totalWeighted += avg * weight
-      totalWeight += weight
-    }
-  })
-  if (totalWeight === 0) return null
-  return totalWeighted / totalWeight
-}
+// Use the shared helper so fuzzy category matching works here too.
+const calcPercentage = calcCoursePercentage
 
 // What score do I need on ONE more grade in the target category
 // so that my overall grade hits targetPct?
 // Works correctly whether the category has existing grades or not.
+// Uses fuzzy matching so grades filed under e.g. "Midterm 1" count toward
+// a weight category named "Midterm Exam 1".
 function calcNeededScore(grades, weights, targetCategory, targetPct) {
+  const weightCategoryNames = Object.keys(weights || {})
   const catSum = {}
   const catCount = {}
   for (const g of (grades || [])) {
-    if (!catSum[g.category]) { catSum[g.category] = 0; catCount[g.category] = 0 }
-    catSum[g.category] += (g.score / g.maxScore) * 100
-    catCount[g.category] += 1
+    const matched = matchGradeToWeightCategory(g.category, weightCategoryNames) || g.category
+    if (!catSum[matched]) { catSum[matched] = 0; catCount[matched] = 0 }
+    catSum[matched] += (g.score / g.maxScore) * 100
+    catCount[matched] += 1
   }
 
   const targetWeight = getWeight(weights[targetCategory])
