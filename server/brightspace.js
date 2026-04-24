@@ -430,7 +430,6 @@ export async function fetchTopicText(courseId, topicId, cookie) {
       return (await res.text()).slice(0, 50000)
     }
     if (contentType.includes('application/pdf')) {
-      // Try pdf-parse if installed; otherwise we skip PDFs gracefully
       try {
         const buf = Buffer.from(await res.arrayBuffer())
         const mod = await import('pdf-parse').catch(() => null)
@@ -443,7 +442,25 @@ export async function fetchTopicText(courseId, topicId, cookie) {
         return null
       }
     }
-    // docx, pptx — not supported yet, skip
+    // .docx — extract via mammoth
+    if (
+      contentType.includes('officedocument.wordprocessingml') ||
+      contentType.includes('application/msword') ||
+      /\.docx?$/i.test(fullUrl.split('?')[0])
+    ) {
+      try {
+        const buf = Buffer.from(await res.arrayBuffer())
+        const mod = await import('mammoth').catch(() => null)
+        if (!mod) return null
+        const mammoth = mod.default || mod
+        const result = await mammoth.extractRawText({ buffer: buf })
+        return (result?.value || '').slice(0, 50000)
+      } catch (e) {
+        console.log(`[brightspace] DOCX parse failed for topic ${topicId}: ${e.message}`)
+        return null
+      }
+    }
+    // pptx, xlsx, other binary — not supported
     return null
   } catch (e) {
     console.log(`[brightspace] fetchTopicText failed for ${topicId}: ${e.message}`)

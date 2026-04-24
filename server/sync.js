@@ -9,12 +9,14 @@ import brightspace from './brightspace.js'
 import db from './db/index.js'
 import { extractTasks, extractWeightsFromSyllabus } from './ai.js'
 
-// Broadened syllabus detection — any title that sounds like a syllabus/course-info doc
+// Broadened syllabus detection — any title that sounds like a syllabus/course-info doc.
+// Does NOT use \b word boundaries because filenames like "BIOL_3020_S2_Syllabus"
+// have underscores (word chars) instead of spaces, so \b misses them.
 function findSyllabusItem(items) {
   if (!items || items.length === 0) return null
   const leafTypes = ['file', 'page', 'link', 'pdf', 'pptx', 'docx']
   const patterns = [
-    /\bsyllabus\b/i,
+    /syllabus/i,
     /course\s*info(rmation)?/i,
     /course\s*overview/i,
     /welcome/i,
@@ -22,13 +24,22 @@ function findSyllabusItem(items) {
     /course\s*schedule/i,
     /getting\s*started/i,
   ]
-  // Prefer a leaf file match first
+  // Prefer a leaf file match first. Among leaves, prefer those with URLs
+  // that look readable (PDF/HTML/docx over modules-masquerading-as-links).
+  const readable = (c) => c.url && /\.(pdf|docx?|html?|txt)(\?|$|#)/i.test(c.url)
+
   for (const rx of patterns) {
+    // First pass: readable file extension + leaf type
+    const best = items.find(c => rx.test(c.title || '') && leafTypes.includes(c.type) && readable(c))
+    if (best) return best
+  }
+  for (const rx of patterns) {
+    // Second pass: any leaf that matches
     const leaf = items.find(c => rx.test(c.title || '') && leafTypes.includes(c.type))
     if (leaf) return leaf
   }
-  // Fall back to any matching item (could be a module)
   for (const rx of patterns) {
+    // Third pass: any match at all
     const any = items.find(c => rx.test(c.title || ''))
     if (any) return any
   }
