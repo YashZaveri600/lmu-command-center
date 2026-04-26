@@ -33,7 +33,7 @@ export async function extractTasks(items) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [{
           role: 'user',
@@ -151,7 +151,7 @@ export async function generateDailyBriefing({ courses, grades, todos, announceme
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 600,
         messages: [{
           role: 'user',
@@ -215,7 +215,7 @@ export async function whatDoINeed({ courseName, currentGrades, weights, targetGr
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 400,
         messages: [{
           role: 'user',
@@ -274,7 +274,7 @@ export async function extractWeightsFromSyllabus(syllabusText, courseName, grade
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 700,
         messages: [{
           role: 'user',
