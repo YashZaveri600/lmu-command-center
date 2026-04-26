@@ -394,12 +394,21 @@ export async function syncUserData(userId, cookie) {
             // Extract bsId number from "topic-12345"
             const topicId = String(syllabus.bsId || '').replace(/^topic-/, '')
             if (topicId && /^\d+$/.test(topicId)) {
-              console.log(`[sync] ${appId}: attempting syllabus weight extraction from "${syllabus.title}"`)
+              const t0 = Date.now()
+              console.log(`[syllabus] ${appId}: START "${syllabus.title}" (topic ${topicId})`)
+
+              // Download — bumped to 20s budget; large PDFs over slow links can be slow
               const syllabusTextPromise = brightspace.fetchTopicText(enrollment.brightspaceId, topicId, cookie)
-              const textTimeout = new Promise(resolve => setTimeout(() => resolve(null), 10_000))
+              const textTimeout = new Promise(resolve => setTimeout(() => resolve('__TIMEOUT__'), 20_000))
               const syllabusText = await Promise.race([syllabusTextPromise, textTimeout])
 
-              if (syllabusText && syllabusText.length > 200) {
+              if (syllabusText === '__TIMEOUT__') {
+                console.log(`[syllabus] ${appId}: TIMEOUT downloading syllabus (>20s)`)
+              } else if (!syllabusText || syllabusText.length <= 200) {
+                console.log(`[syllabus] ${appId}: syllabus text too short or unreadable (${syllabusText?.length || 0} chars)`)
+              } else {
+                console.log(`[syllabus] ${appId}: downloaded ${syllabusText.length} chars in ${Date.now() - t0}ms`)
+
                 // Pull existing grade category names for this course so Claude
                 // can align weight names with actual Brightspace grade data.
                 const { rows: gradeCats } = await db.pool.query(
@@ -407,26 +416,28 @@ export async function syncUserData(userId, cookie) {
                   [userId, appId]
                 )
                 const gradeCategoryHints = gradeCats.map(r => r.category).filter(Boolean)
+                console.log(`[syllabus] ${appId}: calling Claude with ${gradeCategoryHints.length} grade-category hints`)
 
-                const aiTimeout = new Promise(resolve => setTimeout(() => resolve(null), 15_000))
+                const t1 = Date.now()
+                // Bumped AI timeout to 30s — 40k char syllabi can take Claude 10-20s
+                const aiTimeout = new Promise(resolve => setTimeout(() => resolve('__TIMEOUT__'), 30_000))
                 const weightsResult = await Promise.race([
                   extractWeightsFromSyllabus(syllabusText, enrollment.name, gradeCategoryHints),
                   aiTimeout,
                 ])
-                if (weightsResult?.weights) {
+
+                if (weightsResult === '__TIMEOUT__') {
+                  console.log(`[syllabus] ${appId}: TIMEOUT calling Claude (>30s)`)
+                } else if (weightsResult?.weights) {
                   const inserted = await db.upsertWeightsFromSyllabus(userId, appId, weightsResult.weights)
-                  if (inserted > 0) {
-                    console.log(`[sync] ${appId}: extracted ${inserted} weights from syllabus (confidence: ${weightsResult.confidence})`)
-                  }
+                  console.log(`[syllabus] ${appId}: SUCCESS — extracted ${inserted} weights in ${Date.now() - t1}ms (confidence: ${weightsResult.confidence})`)
                 } else {
-                  console.log(`[sync] ${appId}: AI couldn't extract clear weights from syllabus`)
+                  console.log(`[syllabus] ${appId}: Claude returned null after ${Date.now() - t1}ms (no clear weights in syllabus)`)
                 }
-              } else {
-                console.log(`[sync] ${appId}: syllabus text too short or unreadable (${syllabusText?.length || 0} chars)`)
               }
             }
           } else {
-            console.log(`[sync] ${appId}: no syllabus-like file found to extract weights from`)
+            console.log(`[syllabus] ${appId}: no syllabus-like file found in content`)
           }
         }
       } catch (e) {
