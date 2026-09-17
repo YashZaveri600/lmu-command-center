@@ -587,10 +587,14 @@ app.post('/api/sync', async (req, res) => {
 
     const results = await syncUserData(uid, tokens.accessToken)
 
-    if (results.errors.some(e => e.includes('SESSION_EXPIRED'))) {
+    if (results.reconnectRequired) {
       // Clear the expired token
       await db.pool.query("DELETE FROM user_tokens WHERE user_id = $1 AND provider = 'brightspace'", [uid])
-      return res.json({ ok: false, error: 'Brightspace session expired. Please reconnect in Settings.' })
+      return res.json({ ok: false, reconnectRequired: true, error: 'Brightspace rejected your saved connection. Please reconnect in Settings.' })
+    }
+
+    if (results.courses === 0 && results.errors.length > 0) {
+      return res.json({ ok: false, error: results.errors.join(' '), results })
     }
 
     // Sync emails from Microsoft Graph (independent of Brightspace)

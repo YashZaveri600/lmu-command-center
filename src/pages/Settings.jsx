@@ -80,6 +80,7 @@ export default function Settings({ user, emailEnabled }) {
         setLastSync(new Date())
         toast.show('Sync complete', 'success')
       } else {
+        if (data.reconnectRequired) setConnectionStatus('disconnected')
         setSyncResult({ type: 'error', message: data.error || 'Sync failed' })
         toast.show(data.error || 'Sync failed', 'error', 5000)
       }

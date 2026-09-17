@@ -174,6 +174,13 @@ export async function syncUserData(userId, cookie) {
       return results
     }
 
+    // Reuse IDs only for the same Brightspace offering, never by subject name.
+    const { rows: savedCourses } = await db.pool.query(
+      'SELECT app_id, brightspace_id FROM courses WHERE user_id = $1', [userId]
+    )
+    const offeringIds = new Map(savedCourses.map(c => [String(c.brightspace_id), c.app_id]))
+    const currentAppIds = []
+
     // 2. Sync each course
     for (const enrollment of activeCourses) {
       // Extract course code from name like "Spring 2026 Marketing (BCOR-3510-12)" → "BCOR-3510"
@@ -186,7 +193,9 @@ export async function syncUserData(userId, cookie) {
         .replace(/\s*\([A-Z]{2,4}-[^)]+\)\s*$/, '')
         .trim()
 
-      const { appId, color } = generateAppId(cleanName, enrollment.code)
+      const { color } = generateAppId(cleanName, enrollment.code)
+      const appId = offeringIds.get(String(enrollment.brightspaceId)) || `bs-${enrollment.brightspaceId}`
+      currentAppIds.push(appId)
       const shortCode = extractedCode || enrollment.code?.split('-').slice(0, 2).join('-') || appId.toUpperCase()
 
       // Upsert course with clean name
@@ -663,13 +672,6 @@ export async function syncUserData(userId, cookie) {
 
     // Clean up old courses not in current semester
     try {
-      const currentAppIds = activeCourses.map(enrollment => {
-        const cleanName = enrollment.name
-          .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
-          .replace(/\s*\([A-Z]{2,4}-[^)]+\)\s*$/, '')
-          .trim()
-        return generateAppId(cleanName, enrollment.code).appId
-      })
       await db.deleteCoursesNotIn(userId, currentAppIds)
       console.log(`[sync] Cleaned up old courses, keeping ${currentAppIds.length} current: ${currentAppIds.join(', ')}`)
     } catch (e) {
@@ -697,8 +699,9 @@ export async function syncUserData(userId, cookie) {
     console.log(`[sync] Complete for user ${userId}: ${results.courses} courses, ${results.grades} grades, ${results.announcements} announcements, ${results.tasks} tasks (${results.completed} auto-completed)`)
 
   } catch (e) {
-    if (e.message === 'BRIGHTSPACE_SESSION_EXPIRED') {
-      results.errors.push('Brightspace session expired. Please reconnect.')
+    if (['BRIGHTSPACE_SESSION_EXPIRED', 'BRIGHTSPACE_RECONNECT_REQUIRED'].includes(e.message)) {
+      results.reconnectRequired = true
+      results.errors.push('Brightspace rejected your saved connection. Please reconnect in Settings.')
     } else {
       results.errors.push(e.message)
     }

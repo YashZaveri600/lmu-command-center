@@ -1,3 +1,5 @@
+import { selectCurrentEnrollments } from './enrollments.js'
+
 /**
  * Brightspace D2L Valence API wrapper
  *
@@ -42,7 +44,9 @@ async function bsFetch(path, cookie) {
   }
 
   if (!res.ok) {
-    throw new Error(`Brightspace API error: ${res.status} ${res.statusText}`)
+    const error = new Error(`Brightspace API error: ${res.status} ${res.statusText}`)
+    error.status = res.status
+    throw error
   }
 
   return res.json()
@@ -54,6 +58,7 @@ export async function fetchEnrollments(cookie) {
   const apiVersions = ['1.47', '1.28', '1.0']
   let data = null
   let usedVersion = null
+  const enrollmentErrors = []
 
   for (const ver of apiVersions) {
     try {
@@ -64,12 +69,17 @@ export async function fetchEnrollments(cookie) {
       console.log(`[brightspace] Version ${ver} worked!`)
       break
     } catch (e) {
+      if (e.message === 'BRIGHTSPACE_SESSION_EXPIRED') throw e
+      enrollmentErrors.push(e)
       console.log(`[brightspace] Version ${ver} failed: ${e.message}`)
     }
   }
 
   if (!data) {
-    throw new Error('All enrollment API versions failed')
+    if (enrollmentErrors.every(e => e.status === 401 || e.status === 403)) {
+      throw new Error('BRIGHTSPACE_RECONNECT_REQUIRED')
+    }
+    throw new Error('Unable to load Brightspace enrollments. Please try again.')
   }
 
   // Collect all items with pagination
@@ -84,64 +94,19 @@ export async function fetchEnrollments(cookie) {
   let bookmark = data.PagingInfo?.HasMoreItems ? data.PagingInfo.Bookmark : null
   let attempts = 1
 
-  while (bookmark && attempts < 10) {
-    try {
-      const pageData = await bsFetch(`/d2l/api/lp/${usedVersion}/enrollments/myenrollments/?bookmark=${bookmark}`, cookie)
-      const pageItems = pageData.Items || pageData.items || []
-      allItems = allItems.concat(pageItems)
-      bookmark = pageData.PagingInfo?.HasMoreItems ? pageData.PagingInfo.Bookmark : null
-      attempts++
-      console.log(`[brightspace] Page ${attempts}: ${pageItems.length} items`)
-    } catch {
-      break
+  const seenBookmarks = new Set()
+  while (bookmark) {
+    if (seenBookmarks.has(bookmark) || attempts >= 100) {
+      throw new Error('Incomplete Brightspace enrollment list. Please try again.')
     }
+    seenBookmarks.add(bookmark)
+    const pageData = await bsFetch(`/d2l/api/lp/${usedVersion}/enrollments/myenrollments/?bookmark=${encodeURIComponent(bookmark)}`, cookie)
+    allItems = allItems.concat(pageData.Items || pageData.items || [])
+    bookmark = pageData.PagingInfo?.HasMoreItems ? pageData.PagingInfo.Bookmark : null
+    attempts++
   }
 
-  console.log(`[brightspace] Total enrollment items: ${allItems.length}`)
-
-  // Determine current semester name (e.g., "Spring 2026")
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1 // 1-12
-  let currentSemester
-  if (month >= 1 && month <= 5) {
-    currentSemester = `Spring ${year}`
-  } else if (month >= 6 && month <= 7) {
-    currentSemester = `Summer ${year}`
-  } else {
-    currentSemester = `Fall ${year}`
-  }
-  console.log(`[brightspace] Current semester: ${currentSemester}`)
-
-  // Filter to current semester courses only
-  const courses = allItems
-    .filter(item => {
-      if (!item.OrgUnit) return false
-      const name = item.OrgUnit.Name || ''
-      // Only include courses from the current semester
-      return name.toLowerCase().includes(currentSemester.toLowerCase())
-    })
-    // Deduplicate by cleaned name (some courses have multiple sections like PHIL-1800-18 and PHIL-1800-18/20)
-    .filter((item, idx, arr) => {
-      const cleanName = item.OrgUnit.Name
-        .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
-        .replace(/\s*\([^)]+\)\s*$/, '')
-        .trim()
-        .toLowerCase()
-      return idx === arr.findIndex(i => {
-        const otherClean = i.OrgUnit.Name
-          .replace(/^(Spring|Fall|Summer)\s+\d{4}\s+/i, '')
-          .replace(/\s*\([^)]+\)\s*$/, '')
-          .trim()
-          .toLowerCase()
-        return otherClean === cleanName
-      })
-    })
-    .map(item => ({
-      brightspaceId: item.OrgUnit.Id,
-      name: item.OrgUnit.Name,
-      code: item.OrgUnit.Code || '',
-    }))
+  const courses = selectCurrentEnrollments(allItems)
 
   console.log(`[brightspace] Filtered to ${courses.length} courses:`, courses.map(c => `${c.name} (${c.brightspaceId})`))
   return courses
