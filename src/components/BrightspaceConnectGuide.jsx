@@ -21,7 +21,7 @@ export default function BrightspaceConnectGuide() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Connect your Brightspace account</h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400">5 steps, ~90 seconds. Cookies are stored encrypted and only used to sync your own data.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">5 steps, ~90 seconds. Session cookies let EduSync read your course data. They expire and may need reconnecting.</p>
         </div>
 
         {/* OS switcher */}

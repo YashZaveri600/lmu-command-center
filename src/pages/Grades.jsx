@@ -141,7 +141,7 @@ export default function Grades({ grades, courses, setGrades }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Grade Tracker</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track grades and calculate GPA</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Estimates from your saved scores. Check Brightspace for official results.</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -150,6 +150,11 @@ export default function Grades({ grades, courses, setGrades }) {
           <Plus size={16} /> Add Grade
         </button>
       </div>
+
+      {Object.keys(courseWeights).length === 0 && <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+        <h3 className="font-semibold text-lg">No grades imported yet</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Connect Brightspace in Settings and sync your classes. You can also add a score manually. Estimates need both scores and grading weights.</p>
+      </div>}
 
       {/* Overall GPA */}
       {overallGPA !== null && (

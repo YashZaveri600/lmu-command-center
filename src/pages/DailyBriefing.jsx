@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Sun, Sunset, Moon, Flame, Calendar, BookOpen, Mail, CheckSquare, TrendingUp, Sparkles, Loader2 } from 'lucide-react'
 import { getCourseInfo } from '../hooks/useData'
 import CourseBadge from '../components/CourseBadge'
+import { dailyPlan, currentSemesterProgress } from '../utils/dailyPlan'
 import { Skel, SkelStatGrid, SkelPage } from '../components/Skeleton'
 
 const API = import.meta.env.DEV
@@ -36,15 +37,25 @@ function isThisWeek(date) {
 export default function DailyBriefing({ updates, todos, emails, courses, schedule, semester, studySessions, onNavigate, user }) {
   const [aiBriefing, setAiBriefing] = useState(null)
   const [loadingBriefing, setLoadingBriefing] = useState(false)
+  const [briefingUnavailable, setBriefingUnavailable] = useState(false)
 
   useEffect(() => {
     if (!courses?.length) return
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    let active = true
     setLoadingBriefing(true)
-    fetch(`${API}/ai/briefing`, { credentials: 'include' })
+    setBriefingUnavailable(false)
+    fetch(`${API}/ai/briefing`, { credentials: 'include', signal: controller.signal })
       .then(r => r.json())
-      .then(data => { if (data.ok) setAiBriefing(data.briefing) })
-      .catch(() => {})
-      .finally(() => setLoadingBriefing(false))
+      .then(data => {
+        if (!active) return
+        if (data.ok && data.briefing) setAiBriefing(data.briefing)
+        else setBriefingUnavailable(true)
+      })
+      .catch(() => { if (active) setBriefingUnavailable(true) })
+      .finally(() => { clearTimeout(timeout); if (active) setLoadingBriefing(false) })
+    return () => { active = false; clearTimeout(timeout); controller.abort() }
   }, [courses?.length])
 
   if (!courses) {
@@ -69,14 +80,8 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
   const greeting = getGreeting()
 
   // Semester progress
-  let semesterProgress = null
-  if (semester && semester.startDate && semester.endDate) {
-    const start = new Date(semester.startDate + 'T00:00:00')
-    const end = new Date(semester.endDate + 'T00:00:00')
-    const total = end - start
-    const elapsed = today - start
-    semesterProgress = Math.max(0, Math.min(100, (elapsed / total) * 100))
-  }
+  const semesterProgress = currentSemesterProgress(semester, today)
+  const plan = dailyPlan(todos || [], today)
 
   // Current streak
   const currentStreak = studySessions?.streaks?.current || 0
@@ -85,15 +90,9 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
   const dayAbbr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][today.getDay()]
   const todaySchedule = schedule?.days?.[dayAbbr] || []
 
-  // Due today — only assignments, not announcements
-  const dueToday = (updates || []).filter(u => u.date === todayStr && u.type === 'assignment')
-
-  // Due this week — only assignments, not announcements
-  const dueThisWeek = (updates || []).filter(u => {
-    if (!u.date || u.type === 'announcement') return false
-    const d = new Date(u.date + 'T00:00:00')
-    return isThisWeek(d) && u.date !== todayStr
-  })
+  // Use actual assignment due dates, not announcement publication dates.
+  const dueToday = plan.today.map(t => ({ ...t, title: t.task, date: t.due?.slice(0,10) }))
+  const dueThisWeek = plan.upcoming.map(t => ({ ...t, title: t.task, date: t.due?.slice(0,10) }))
 
   // Recent announcements (for display separately)
   const recentAnnouncements = (updates || []).filter(u => {
@@ -107,7 +106,7 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
   const importantEmails = (emails || []).filter(e => e.important).slice(0, 5)
 
   // Pending todos
-  const pendingTodos = (todos || []).filter(t => !t.done).slice(0, 5)
+  const pendingTodos = plan.pending.slice(0, 5)
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 py-4">
@@ -116,12 +115,22 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
         <div className="flex items-center justify-center gap-3">
           {greeting.icon}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {greeting.text}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+            {greeting.text}{user?.displayName ? `, ${(user.displayName.includes(',') ? user.displayName.split(',')[1].trim() : user.displayName).split(' ')[0]}` : ''}
           </h1>
         </div>
         <p className="text-gray-500 dark:text-gray-400">{formatDateNice(today)}</p>
       </div>
 
+      {courses.length === 0 && <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-left">
+        <h2 className="text-lg font-semibold mb-2">Your semester starts here.</h2><p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Connect Brightspace to bring your classes and assignments into one place.</p>
+        <button onClick={() => onNavigate('settings')} className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm">Connect my classes</button><a href="/?demo=1" className="ml-4 text-sm text-blue-600 dark:text-blue-400">Try the demo first ↗</a>
+      </div>}
+      {briefingUnavailable && <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+        <h2 className="font-semibold mb-2">Your day at a glance</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{plan.today.length} assignment{plan.today.length === 1 ? '' : 's'} due today. {plan.overdue.length > 0 ? `${plan.overdue.length} overdue. ` : ''}{plan.upcoming.length} coming up in the next 7 days.</p>
+        {plan.pending[0] && <p className="text-sm mt-2">Start with: {plan.pending[0].task}</p>}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">Based on your saved tasks. The AI summary is unavailable right now.</p>
+      </div>}
       {/* AI Daily Briefing */}
       {(aiBriefing || loadingBriefing) && (
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-5">
@@ -206,7 +215,7 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
           )}
         </div>
         {dueToday.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500">Nothing due today. Enjoy the breathing room.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">No pending assignments due today in your saved data.</p>
         ) : (
           <div className="space-y-2">
             {dueToday.map((item, i) => (
@@ -219,13 +228,13 @@ export default function DailyBriefing({ updates, todos, emails, courses, schedul
         )}
       </div>
 
-      {/* Due This Week */}
+      {/* Next 7 Days */}
       {dueThisWeek.length > 0 && (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Calendar size={18} className="text-yellow-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-white">Due This Week</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Next 7 Days</h3>
             </div>
             <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-medium">
               {dueThisWeek.length}

@@ -52,7 +52,9 @@ export default function Settings({ user, emailEnabled }) {
       const data = await res.json()
       if (data.ok) {
         setConnectionStatus('connected')
+        window.dispatchEvent(new Event('edusync:connection-change'))
         setBsCookie('')
+        setBsSecureCookie('')
         setSyncResult({ type: 'success', message: `Connected! Found ${data.userName || 'your account'} on Brightspace.` })
       } else {
         setSyncResult({ type: 'error', message: data.error || 'Failed to connect' })
@@ -89,6 +91,7 @@ export default function Settings({ user, emailEnabled }) {
       toast.show('Sync request failed', 'error', 5000)
     }
     setSyncing(false)
+    window.dispatchEvent(new Event('edusync:connection-change'))
   }
 
   async function disconnect() {
@@ -117,10 +120,11 @@ export default function Settings({ user, emailEnabled }) {
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Your privacy</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-gray-600 dark:text-gray-300">
               <div className="flex items-center gap-1.5"><Eye size={12} className="text-blue-500" /> Read-only access</div>
-              <div className="flex items-center gap-1.5"><Lock size={12} className="text-blue-500" /> Encrypted at rest</div>
-              <div className="flex items-center gap-1.5"><CheckCircle size={12} className="text-blue-500" /> Never shared</div>
-              <div className="flex items-center gap-1.5"><XCircle size={12} className="text-blue-500" /> No third parties</div>
+              <div className="flex items-center gap-1.5"><Lock size={12} className="text-blue-500" /> Microsoft sign-in</div>
+              <div className="flex items-center gap-1.5"><CheckCircle size={12} className="text-blue-500" /> AI uses Anthropic</div>
+              <div className="flex items-center gap-1.5"><XCircle size={12} className="text-blue-500" /> Disconnect anytime</div>
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 pt-2">AI features send relevant course content to Anthropic. Imported course information is stored in the app database.</p>
           </div>
         </div>
       </div>

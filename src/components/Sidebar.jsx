@@ -37,7 +37,7 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress, user, onLogout }) {
+export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCount, streak, semesterProgress, semesterName, user, onLogout }) {
   return (
     <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0">
       {/* Brand */}
@@ -54,7 +54,7 @@ export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCo
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-gray-900 dark:text-white leading-tight">EduSync</h1>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">Spring 2026</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">{semesterName || 'Your workspace'}</p>
           </div>
         </button>
         {semesterProgress != null && (
@@ -73,6 +73,7 @@ export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCo
         )}
       </div>
 
+      <a href="/?demo=1" className="mx-4 mt-3 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600">Explore the sample workspace ↗</a>
       {/* Nav */}
       <nav className="flex-1 py-2 overflow-y-auto">
         {NAV_GROUPS.map((group, gi) => (
@@ -86,6 +87,7 @@ export default function Sidebar({ active, onNavigate, dark, toggleDark, urgentCo
               return (
                 <button
                   key={item.id}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => onNavigate(item.id)}
                   className={`relative w-full flex items-center gap-3 pl-5 pr-4 py-2 text-sm transition-colors group ${
                     isActive

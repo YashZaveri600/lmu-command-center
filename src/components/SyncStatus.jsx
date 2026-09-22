@@ -25,7 +25,8 @@ function formatRelative(d) {
 // Small persistent sync-status pill. Shows last-synced time with a live
 // green dot, and a Resync button to trigger a manual sync.
 // Meant to sit in the top-right of the main header, visible on every page.
-export default function SyncStatus() {
+export default function SyncStatus({ onReconnect }) {
+  const [connected, setConnected] = useState(null)
   const [lastSync, setLastSync] = useState(null)
   const [syncing, setSyncing] = useState(false)
   // Bump a tick counter every 30s to keep the relative time fresh
@@ -35,11 +36,19 @@ export default function SyncStatus() {
   const refresh = useCallback(() => {
     fetch(`${API}/brightspace/status`, { credentials: 'include' })
       .then(r => r.json())
-      .then(data => { if (data.lastSync) setLastSync(new Date(data.lastSync)) })
+      .then(data => { setConnected(data.connected === true); setLastSync(data.lastSync ? new Date(data.lastSync) : null) })
       .catch(() => {})
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    refresh()
+    window.addEventListener('edusync:connection-change', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.removeEventListener('edusync:connection-change', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [refresh])
   useEffect(() => {
     const i = setInterval(() => setTick(t => t + 1), 30_000)
     return () => clearInterval(i)
@@ -47,11 +56,13 @@ export default function SyncStatus() {
 
   const handleResync = async () => {
     if (syncing) return
+    if (connected === false && onReconnect) { onReconnect(); return }
     setSyncing(true)
     try {
       const res = await fetch(`${API}/sync`, { method: 'POST', credentials: 'include' })
       const data = await res.json()
       if (data.ok) {
+        setConnected(true)
         setLastSync(new Date())
         const n = data.results
         toast.show(
@@ -59,6 +70,7 @@ export default function SyncStatus() {
           'success'
         )
       } else {
+        if (data.reconnectRequired) { setConnected(false); onReconnect?.() }
         toast.show(data.error || 'Sync failed', 'error', 5000)
       }
     } catch {
@@ -69,16 +81,17 @@ export default function SyncStatus() {
 
   return (
     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+      <span className={`w-1.5 h-1.5 rounded-full ${connected === true ? 'bg-green-500' : 'bg-amber-500'}`} />
       <span className="hidden sm:inline">
-        {lastSync ? (
+        {connected === false ? 'Reconnect Brightspace' : connected === null ? 'Checking connection' : lastSync ? (
           <>Synced <span className="text-gray-700 dark:text-gray-200">{formatRelative(lastSync)}</span></>
         ) : 'Not synced'}
       </span>
       <button
         onClick={handleResync}
         disabled={syncing}
-        title="Resync now"
+        title={connected === false ? 'Connect Brightspace in Settings' : 'Resync now'}
+        aria-label={connected === false ? 'Connect Brightspace in Settings' : 'Resync now'}
         className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors disabled:opacity-50"
       >
         <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />

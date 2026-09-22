@@ -4,6 +4,7 @@ import CourseBadge from '../components/CourseBadge'
 import UrgencyDot from '../components/UrgencyDot'
 import { SkelPage, SkelStatGrid } from '../components/Skeleton'
 import ActivityFeed from '../components/ActivityFeed'
+import { dailyPlan, localDateKey } from '../utils/dailyPlan'
 
 // Pick the best "syllabus" item for a course from the content tree
 function findSyllabus(courseContent, courseId) {
@@ -38,12 +39,11 @@ export default function Dashboard({ updates, todos, emails, courses, courseConte
   const pendingTodos = todos.filter(t => !t.done)
   const importantEmails = emails.filter(e => e.important)
 
-  const upcomingDeadlines = [...updates]
-    .filter(u => u.type === 'assignment')
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+  const plan = dailyPlan(todos)
+  const today = localDateKey()
+  const upcomingDeadlines = [...plan.today, ...plan.upcoming]
     .slice(0, 5)
-
-  const today = new Date().toISOString().split('T')[0]
+    .map(t => ({ ...t, title: t.task, date: t.due?.slice(0, 10), urgency: t.priority === 'high' ? 'urgent' : 'upcoming' }))
 
   return (
     <div className="space-y-6">
@@ -72,10 +72,10 @@ export default function Dashboard({ updates, todos, emails, courses, courseConte
         />
         <StatCard
           icon={<Clock size={20} className="text-yellow-500" />}
-          label="Upcoming Deadlines"
+          label="Due in the Next 7 Days"
           value={upcomingDeadlines.length}
           color="yellow"
-          onClick={() => onNavigate('updates')}
+          onClick={() => onNavigate('todos')}
         />
         <StatCard
           icon={<Bell size={20} className="text-purple-500" />}
@@ -128,11 +128,12 @@ export default function Dashboard({ updates, todos, emails, courses, courseConte
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-900 dark:text-white">Upcoming Deadlines</h3>
-            <button onClick={() => onNavigate('updates')} className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
+            <button onClick={() => onNavigate('todos')} className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
               View all <ArrowRight size={12} />
             </button>
           </div>
           <div className="space-y-2">
+            {upcomingDeadlines.length === 0 && <p className="text-sm text-gray-500">No pending deadlines in the next 7 days.</p>}
             {upcomingDeadlines.map(item => (
               <div key={item.id} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
                 <UrgencyDot level={item.urgency} />

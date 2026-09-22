@@ -528,7 +528,7 @@ app.get('/api/brightspace/status', async (req, res) => {
     const tokens = await db.getTokens(uid, 'brightspace')
     const syncInfo = await db.getTokens(uid, 'brightspace_sync')
     res.json({
-      connected: !!tokens?.accessToken,
+      connected: !!tokens?.accessToken && (!tokens.expiresAt || new Date(tokens.expiresAt) > new Date()),
       lastSync: syncInfo?.expiresAt || null,
     })
   } catch (e) { res.status(500).json({ error: e.message }) }
