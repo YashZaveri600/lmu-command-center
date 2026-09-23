@@ -7,7 +7,7 @@ export default function LoginPage({ error }) {
   useEffect(() => { document.title = 'EduSync — Less catching up. More moving forward.' }, [])
   return <div className="showcase es-landing">
     <a className="es-skip" href="#main">Skip to content</a>
-    <header className="es-header"><Brand/><nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#the-project">The project</a><a className="es-signin" href="/auth/microsoft">Student sign in <ArrowUpRight size={16}/></a></nav></header>
+    <header className="es-header"><Brand/><nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#the-project">The project</a><a href="/case-study/">Case study</a><a className="es-signin" href="/auth/microsoft">Student sign in <ArrowUpRight size={16}/></a></nav></header>
     <main id="main">
       <section className="es-hero">
         <div className="es-hero-copy">
@@ -51,6 +51,6 @@ export default function LoginPage({ error }) {
         ['Is this an official university product?', 'EduSync is an independent student project by Yash Zaveri. It is not an official university service or an endorsed product.'],
       ].map(([q,a]) => <details key={q}><summary>{q}<Plus size={19}/></summary><p>{a}</p></details>)}</section>
       <section className="es-bottom-cta"><span className="es-note-star">✳</span><h2>A little clarity goes a long way.</h2><a className="es-button es-button-dark" href="/?demo=1">Make yourself at home <ArrowUpRight size={19}/></a></section>
-    </main><footer className="es-footer"><Brand/><span>An independent project by Yash Zaveri.</span><a href="/?demo=1">Explore the demo <ArrowUpRight size={15}/></a></footer>
+    </main><footer className="es-footer"><Brand/><span>An independent project by Yash Zaveri.</span><a href="/case-study/">Case study <ArrowUpRight size={15}/></a><a href="/?demo=1">Explore the demo <ArrowUpRight size={15}/></a></footer>
   </div>
 }
